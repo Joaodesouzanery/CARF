@@ -73,6 +73,17 @@ def candidatos_novos(conhecidos: list[Recurso], hoje: date | None = None) -> lis
     ]
 
 
+def normalizar_tributo(rotulo) -> str | None:
+    """O rótulo muda entre os anos ("COFINS" x "COFINS - CONTRIBUIÇÃO PARA O FINANCIAMENTO..."):
+    fica só a sigla, sem o sufixo "-V" (vinculados ao comércio exterior)."""
+    if not isinstance(rotulo, str) or not rotulo.strip():
+        return None
+    sigla = rotulo.split(" - ")[0].strip().upper()
+    if sigla in ("NÃO INFORMADO", "NAO INFORMADO", "INDIFERENTE"):
+        return None
+    return sigla.removesuffix("-V")
+
+
 def desfecho(resultado: str | None) -> str | None:
     if not isinstance(resultado, str) or not resultado:
         return None
@@ -161,6 +172,8 @@ def ingerir_julgamentos(zip_path: Path, saida: Path, anon=None, com_texto: bool 
     df = _ler_csv(zip_path)
     df["data_sessao"] = pd.to_datetime(df["data_sessao"], errors="coerce").dt.date
     df["ano"] = pd.to_datetime(df["data_sessao"], errors="coerce").dt.year.astype("Int32")
+    df["tributo_original"] = df["tributo"]
+    df["tributo"] = df["tributo"].map(normalizar_tributo)
     df["desfecho"] = df["resultado_julgamento"].map(desfecho)
     df["tipo_recurso"] = df["resultado_julgamento"].map(tipo_recurso)
     if not com_texto:
@@ -180,6 +193,9 @@ def ingerir_estoque(zip_path: Path, saida: Path) -> Path:
     for col in ("ano_referencia", "mes_referencia"):
         if col in df:
             df[col] = pd.to_numeric(df[col], errors="coerce").astype("Int32")
+    if "tributo" in df:
+        df["tributo_original"] = df["tributo"]
+        df["tributo"] = df["tributo"].map(normalizar_tributo)
     for col in ("data_protocolo", "data_entrada_carf"):
         if col in df:
             df[col] = pd.to_datetime(df[col], errors="coerce").dt.date

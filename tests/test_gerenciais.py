@@ -206,3 +206,22 @@ def test_ingestao_paralela_de_varios_arquivos(tmp_path):
     jobs = [(z, "estoque", tmp_path / "out") for z in zips]
     g._ingerir_lote(jobs, workers=2, anon=None, sem_ner=True, manter_cnpj=False, log=lambda m: None)
     assert sorted(p.name for p in (tmp_path / "out").glob("*.parquet")) == ["est0.parquet", "est1.parquet", "est2.parquet"]
+
+
+@pytest.mark.parametrize("rotulo,sigla", [
+    ("COFINS", "COFINS"), ("COFINS - CONTRIBUIÇÃO PARA O FINANCIAMENTO DA SEGURIDADE SOCIAL", "COFINS"),
+    ("CS - Contribuições Previdenciárias", "CS"), ("CS - CONTRIBUIÇÕES PREVIDENCIÁRIAS", "CS"),
+    ("OUTROS-V - OUTROS VINCULADOS - COMÉRCIO EXTERIOR", "OUTROS"), ("OUTROS - Vinculados Comex", "OUTROS"),
+    ("IPI-V", "IPI"), ("Não Informado", None), ("INDIFERENTE", None), (None, None), ("", None),
+])
+def test_normalizar_tributo_entre_anos(rotulo, sigla):
+    assert g.normalizar_tributo(rotulo) == sigla
+
+
+def test_ingestao_guarda_tributo_normalizado_e_original(tmp_path):
+    import pandas as pd
+
+    antigo = JULG.replace('"COFINS"', '"COFINS - CONTRIBUIÇÃO PARA O FINANCIAMENTO DA SEGURIDADE SOCIAL"', 1)
+    out = g.ingerir_julgamentos(zip_de(tmp_path, "carf_julgamentos_2025.zip", antigo), tmp_path / "o")
+    df = pd.read_parquet(out)
+    assert df.tributo[0] == "COFINS" and df.tributo_original[0].startswith("COFINS - CONTRIBUIÇÃO")
