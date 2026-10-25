@@ -6,7 +6,7 @@ from collections import Counter
 from datetime import UTC, datetime
 from pathlib import Path
 
-from . import config
+from . import config, solr
 from . import text as tx
 from .store import Store
 
@@ -29,7 +29,24 @@ def filtros_base(ano_min: int | None) -> list[str]:
     return [f"ano_sessao_s:[{ano_min} TO *]"] if ano_min else []
 
 
-def montar_linha(doc: dict, anon, agora: datetime) -> dict:
+CAMPOS_LEVES = tuple(c for c in solr.FIELDS if c != "conteudo_txt")
+
+
+TEXTOS = ("ementa_s", "conteudo_txt")
+
+
+def _escalares(doc: dict) -> dict:
+    """O Solr pode devolver lista em qualquer campo: texto junta, metadado pega o primeiro valor."""
+    out = {}
+    for k, v in doc.items():
+        if isinstance(v, list) and k != "decisao_txt":
+            v = "\n".join(map(str, v)) if k in TEXTOS else (v[0] if v else None)
+        out[k] = v
+    return out
+
+
+def montar_linha(doc: dict, anon, agora: datetime, leve: bool = False) -> dict:
+    doc = _escalares(doc)
     relator = doc.get("nome_relator_s")
     permitidos = [relator] if relator else []
     stats: Counter = Counter()
@@ -41,7 +58,7 @@ def montar_linha(doc: dict, anon, agora: datetime) -> dict:
 
     dt_sessao = tx.data_sessao_valida(doc.get("dt_sessao_tdt"))
     ano = dt_sessao.year if dt_sessao else tx.ano_valido(doc.get("ano_sessao_s"))
-    conteudo = tx.limpar_texto(doc.get("conteudo_txt"))
+    conteudo = "" if leve else tx.limpar_texto(doc.get("conteudo_txt"))  # leve: nunca guarda o voto
     decisao = doc.get("decisao_txt")
     decisao = "\n".join(decisao) if isinstance(decisao, list) else (decisao or "")
 
@@ -52,7 +69,7 @@ def montar_linha(doc: dict, anon, agora: datetime) -> dict:
         flags.append("data_sessao_invalida")
     if ano is None:
         flags.append("ano_invalido")
-    if not conteudo:
+    if not conteudo and not leve:
         flags.append("sem_texto")
 
     return {
@@ -67,7 +84,8 @@ def montar_linha(doc: dict, anon, agora: datetime) -> dict:
         "ano": ano,
         "ementa": limpo(tx.limpar_texto(doc.get("ementa_s"))),
         "decisao": limpo(tx.limpar_texto(decisao)),
-        "conteudo": limpo(conteudo),
+        "conteudo": limpo(conteudo) if conteudo else None,
+        "tem_texto": bool(conteudo),
         "nome_arquivo_pdf": doc.get("nome_arquivo_pdf_s"),
         "dt_index": tx.parse_datetime(doc.get("dt_index_tdt")),
         "dt_atualizacao": tx.parse_datetime(doc.get("dt_registro_atualizacao_tdt")),
@@ -88,21 +106,29 @@ def sincronizar(
     log=print,
     agora=lambda: datetime.now(UTC).replace(tzinfo=None),
     tamanho_pagina: int = config.PAGE_SIZE,
+    filtros_extra: tuple[str, ...] = (),
+    leve: bool = False,
+    relatores: list[str] | None = None,
 ) -> dict:
     """Baixa, anonimiza e grava. Retoma do cursor salvo se a execução anterior foi interrompida."""
-    base = filtros_base(ano_min)
+    base = filtros_base(ano_min) + list(filtros_extra)
     modo = "inc" if incremental else "full"
     d = state.data
+    assinatura = {"ano_min": ano_min}
+    if filtros_extra:
+        assinatura["extra"] = list(filtros_extra)
     if incremental:
         if not d.get("last_dt_index"):
             raise RuntimeError("Nenhuma carga completa concluída; rode a sincronização completa antes.")
-        if d.get("filters") != {"ano_min": ano_min}:
+        if d.get("filters") != assinatura:
             raise RuntimeError("Filtros diferentes dos da carga completa; use os mesmos filtros.")
+        leve = d.get("leve", leve)
         fq = base + [f"dt_index_tdt:[{d['last_dt_index']} TO *]"]
     else:
-        if d.get("filters") != {"ano_min": ano_min}:
+        if d.get("filters") != assinatura:
             d.clear()
-            d["filters"] = {"ano_min": ano_min}
+            d["filters"] = assinatura
+        d["leve"] = leve
         fq = base
 
     secao = d.setdefault(modo, {})
@@ -112,10 +138,10 @@ def sincronizar(
     cursor = secao.get("cursor") or "*"
     state.save()
 
-    anon.allowlist.adicionar(client.relatores())
+    anon.allowlist.adicionar(relatores if relatores is not None else client.relatores())
     processados = novos = atualizados = ignorados = 0
     interrompido = False
-    for docs, nxt, total in client.pages(fq, rows=tamanho_pagina, cursor=cursor):
+    for docs, nxt, total in client.pages(fq, fl=CAMPOS_LEVES if leve else solr.FIELDS, rows=tamanho_pagina, cursor=cursor):
         if docs:
             if incremental:
                 # O limite do fq é inclusivo e o indexador carimba lotes inteiros com o mesmo
@@ -135,10 +161,12 @@ def sincronizar(
                 docs = novos_docs
             ts = agora()
             if docs:
-                store.write([montar_linha(x, anon, ts) for x in docs])
+                store.write([montar_linha(x, anon, ts, leve) for x in docs])
             processados += len(docs)
             log(f"[{modo}] {processados}/{total} documentos gravados")
         secao["cursor"] = nxt
+        secao["processados"] = secao.get("processados", 0) + len(docs)
+        secao["total"] = total
         state.save()
         if limite and processados >= limite:
             interrompido = True

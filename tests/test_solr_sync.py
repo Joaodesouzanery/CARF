@@ -109,3 +109,11 @@ def test_compactacao_remove_versoes_antigas(tmp_path, anon):
     assert store.compact() == 2
     assert len(list(tmp_path.rglob("part-*.parquet"))) == 1
     assert store.connect().execute("select count(*) from acordaos").fetchone()[0] == 3
+
+
+def test_campos_multivalorados_nao_quebram(anon):
+    d = doc(1, numero_decisao_s=["1301-000001", "x"], ementa_s=["Parte 1.", "Parte 2."],
+            turma_s=["T1"], dt_sessao_tdt=["2022-03-16T00:00:00Z"], ano_sessao_s=["2022"])
+    r = montar_linha(d, anon, __import__("datetime").datetime(2026, 1, 1))
+    assert r["numero_decisao"] == "1301-000001" and r["turma"] == "T1"
+    assert r["ementa"].startswith("Parte 1.\nParte 2.") and r["ano"] == 2022

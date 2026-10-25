@@ -34,6 +34,27 @@ def doc(i, dt_index="2026-01-01T00:00:00Z", **kw):
     return base
 
 
+def _casa_fatias(d, fqs):
+    for fq in fqs:
+        if fq.startswith("-("):  # residual: tudo que não está nas outras unidades
+            for ano, secao in re.findall(r'\(ano_sessao_s:"([^"]+)" AND secao_s:"([^"]+)"\)', fq):
+                if d.get("ano_sessao_s") == ano and d.get("secao_s") == secao:
+                    return False
+            continue
+        m = re.fullmatch(r'ano_sessao_s:"([^"]+)"', fq)
+        if m and d.get("ano_sessao_s") != m.group(1):
+            return False
+        m = re.fullmatch(r'secao_s:"([^"]+)"', fq)
+        if m and d.get("secao_s") != m.group(1):
+            return False
+        m = re.fullmatch(r"-secao_s:\((.+)\)", fq)
+        if m and d.get("secao_s") in re.findall(r'"([^"]+)"', m.group(1)):
+            return False
+        if fq == "-secao_s:[* TO *]" and d.get("secao_s"):
+            return False
+    return True
+
+
 class SessaoFalsa:
     """Imita requests.Session contra um índice Solr com `docs`."""
 
@@ -54,6 +75,21 @@ class SessaoFalsa:
             m = re.match(r"ano_sessao_s:\[(\d+) TO \*\]", fq)
             if m:
                 sel = [d for d in sel if d.get("ano_sessao_s", "") >= m.group(1)]
+        sel = [d for d in sel if _casa_fatias(d, params.get("fq", []))]
+        if params.get("facet.pivot"):
+            anos = {}
+            for d in sel:
+                anos.setdefault(d["ano_sessao_s"], []).append(d)
+            piv = []
+            for ano, ds in sorted(anos.items()):
+                secoes = {}
+                for d in ds:
+                    secoes.setdefault(d.get("secao_s"), []).append(d)
+                piv.append({"field": "ano_sessao_s", "value": ano, "count": len(ds),
+                            "pivot": [{"field": "secao_s", "value": k, "count": len(v)}
+                                      for k, v in sorted(secoes.items()) if k]})
+            return RespostaFalsa(data={"facet_counts": {"facet_pivot": {"ano_sessao_s,secao_s": piv}},
+                                       "response": {"numFound": len(sel), "docs": []}})
         if params.get("facet"):
             nomes = sorted({d["nome_relator_s"] for d in self.docs})
             return RespostaFalsa(data={"facet_counts": {"facet_fields": {

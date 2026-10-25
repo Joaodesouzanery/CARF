@@ -83,18 +83,28 @@ def _where(filtros: dict | None) -> tuple[str, list]:
     return (" AND ".join(cond) or "true"), params
 
 
-def buscar(con, termos: str, filtros=None, limite=10) -> list[dict]:
-    """Todos os termos precisam aparecer (sem acento/caixa); ementa pesa mais que o corpo."""
-    palavras = [p for p in re.findall(r"\w+", _norm(termos)) if len(p) > 2]
+STOPWORDS = {
+    "para", "como", "com", "por", "dos", "das", "nos", "nas", "uma", "que", "sem", "sobre",
+    "entre", "pelo", "pela", "aos", "ser", "foi", "são", "mais", "quando", "qual", "quais",
+    "isso", "esse", "essa", "este", "esta", "não", "nao", "seu", "sua", "ainda", "pode",
+}
+
+
+def buscar(con, termos: str, filtros=None, limite=10, qualquer=False) -> list[dict]:
+    """Léxica. Por padrão todos os termos precisam aparecer; com `qualquer=True` basta um, e o
+    ranking premia quem casa mais termos. Sem acento/caixa; a ementa pesa mais que o corpo."""
+    palavras = [p for p in re.findall(r"\w+", _norm(termos)) if len(p) > 2 and p not in STOPWORDS]
     if not palavras:
         raise ValueError("informe ao menos um termo com 3+ letras")
     where, params = _where(filtros)
     texto = "strip_accents(lower(coalesce(ementa,'') || ' ' || coalesce(conteudo,'')))"
     ementa = "strip_accents(lower(coalesce(ementa,'')))"
-    conds = " AND ".join(f"{texto} LIKE ?" for _ in palavras)
+    conds = ("(" + " OR ".join(f"{texto} LIKE ?" for _ in palavras) + ")") if qualquer else \
+        " AND ".join(f"{texto} LIKE ?" for _ in palavras)
     score = " + ".join(
         f"(length({ementa}) - length(replace({ementa}, ?, ''))) * 5 / {len(p)}"
         f" + (length({texto}) - length(replace({texto}, ?, ''))) / {len(p)}"
+        f" + CASE WHEN {texto} LIKE ? THEN 20 ELSE 0 END"
         for p in palavras
     )
     sql = f"""SELECT id, numero_decisao, numero_processo, turma, camara, secao, relator, dt_sessao,
@@ -102,7 +112,8 @@ def buscar(con, termos: str, filtros=None, limite=10) -> list[dict]:
               FROM acordaos WHERE {where} AND {conds}
               ORDER BY score DESC, dt_sessao DESC NULLS LAST LIMIT ?"""
     # ordem dos parâmetros no SQL: score, filtros, LIKE, limite
-    args = [x for p in palavras for x in (p, p)] + params + [f"%{p}%" for p in palavras] + [limite]
+    args = ([x for p in palavras for x in (p, p, f"%{p}%")] + params
+            + [f"%{p}%" for p in palavras] + [limite])
     rows = con.execute(sql, args).fetchall()
     nomes = ["id", "numero_decisao", "numero_processo", "turma", "camara", "secao", "relator",
              "dt_sessao", "ano", "ementa", "nome_arquivo_pdf", "score"]

@@ -6,28 +6,11 @@ import pytest
 from carf import config
 from carf.monitor import verificar_indice
 from carf.qa import ask, consulta
-from carf.store import Store
-from carf.sync import State, montar_linha
+from carf.sync import State
 
 from .fakes import SessaoFalsa, doc
 
 AGORA = datetime(2026, 10, 25)
-
-
-@pytest.fixture
-def con(tmp_path, anon):
-    docs = [
-        doc(1, ementa_s="IRPJ. Glosa de despesas operacionais. Prova insuficiente.", turma_s="T1"),
-        doc(2, ementa_s="CSLL. Base de cálculo negativa. Compensação de prejuízos.", turma_s="T1",
-            decisao_txt=["Acordam em dar provimento parcial ao recurso."]),
-        doc(3, ementa_s="IRPJ. Omissão de receitas; depósitos bancários.", turma_s="T2",
-            decisao_txt=["Acordam, por maioria, dar provimento ao recurso voluntário."]),
-        doc(4, ementa_s="Preliminar. Nulidade. Não conhecimento.", turma_s="T2",
-            decisao_txt=["Acordam em não conhecer do recurso."]),
-    ]
-    st = Store(tmp_path)
-    st.write([montar_linha(d, anon, AGORA) for d in docs])
-    return st.connect()
 
 
 @pytest.mark.parametrize("texto,esperado", [
@@ -37,8 +20,8 @@ def con(tmp_path, anon):
     ("não conhecer do recurso", "NAO_CONHECIDO"),
     ("negar provimento ao recurso de ofício e dar provimento ao voluntário", "MISTO"),
     ("converter o julgamento em diligência", "OUTRO"),
-    ("conhecer parcialmente do recurso, não conhecendo os argumentos de constitucionalidade. "
-     "Na parte conhecida, em negar provimento ao Recurso Voluntário.", "NEGADO"),
+    (("conhecer parcialmente do recurso, não conhecendo os argumentos de constitucionalidade. "
+     "Na parte conhecida, em negar provimento ao Recurso Voluntário."), "NEGADO"),
     ("por maioria, em conhecer do recurso e, por unanimidade, em dar parcial provimento", "PROVIDO_PARCIAL"),
     ("conhecer do Recurso Voluntário, dando-lhe provimento", "PROVIDO"),
     ("conhecer e acolher parcialmente os Embargos de Declaração", "PROVIDO_PARCIAL"),

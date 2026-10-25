@@ -137,3 +137,18 @@ class SolrClient:
         )
         flat = data["facet_counts"]["facet_fields"]["nome_relator_s"]
         return flat[::2]
+
+    def pivot_ano_secao(self, fq=()) -> list[dict]:
+        """Contagem por ano de sessão e seção (base para fatiar a carga em paralelo)."""
+        data = self._get(
+            {
+                "q": "*:*",
+                "fq": list(fq),
+                "rows": 0,
+                "facet": "true",
+                "facet.pivot": "ano_sessao_s,secao_s",
+                "facet.limit": -1,
+                "facet.pivot.mincount": 1,
+            }
+        )
+        return data["facet_counts"]["facet_pivot"]["ano_sessao_s,secao_s"]

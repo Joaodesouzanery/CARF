@@ -21,6 +21,7 @@ SCHEMA = pa.schema(
         ("ementa", pa.string()),
         ("decisao", pa.string()),
         ("conteudo", pa.string()),
+        ("tem_texto", pa.bool_()),
         ("nome_arquivo_pdf", pa.string()),
         ("dt_index", pa.timestamp("us")),
         ("dt_atualizacao", pa.timestamp("us")),
@@ -105,4 +106,5 @@ def _duck(t) -> str:
         "date32[day]": "DATE",
         "int32": "INTEGER",
         "timestamp[us]": "TIMESTAMP",
+        "bool": "BOOLEAN",
     }[str(t)]
