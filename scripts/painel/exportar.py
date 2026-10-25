@@ -63,14 +63,14 @@ def resumo_ementa(e: str | None, n=230) -> str:
     return e[:n] + ("…" if len(e) > n else "")
 
 
-def exportar_anos(con, saida: Path, anos_min: int) -> dict:
+def exportar_anos(con, saida: Path, anos_min: int, anos_max: int = 9999, filtro_sql: str = "", params=()) -> dict:
     d = saida / "dados"
     d.mkdir(parents=True, exist_ok=True)
     turmas, assuntos = {}, {}
     por_ano = {}
     q = con.execute("""SELECT id, numero_decisao, numero_processo, turma, dt_sessao, ano, assunto, tese_nulidade,
                        tese_prescricao, decisao, ementa, nome_arquivo_pdf FROM acordaos
-                       WHERE ano >= ? ORDER BY dt_sessao DESC, id""", [anos_min])
+                       WHERE ano BETWEEN ? AND ?""" + filtro_sql + " ORDER BY dt_sessao DESC, id", [anos_min, anos_max, *params])
     linhas = q.fetchall()
     canon = canonicos(l[6] for l in linhas)
     for (id_, dec, proc, turma, dt, ano, assunto, nul, pre, decisao, ementa, pdf) in linhas:
