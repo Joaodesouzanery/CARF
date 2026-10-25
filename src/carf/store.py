@@ -32,10 +32,14 @@ SCHEMA = pa.schema(
 )
 
 
+FACETS_COLS = ["assunto", "assunto_norm", "teses", "tese_nulidade", "tese_prescricao"]
+
+
 class Store:
     def __init__(self, root):
         self.root = Path(root)
         self.dir = self.root / "acordaos"
+        self.facets_path = self.root / "facets.parquet"  # matéria/teses derivadas (carf enriquecer)
 
     def _particao(self, ano) -> Path:
         return self.dir / f"ano={ano if ano is not None else 'desconhecido'}"
@@ -62,7 +66,7 @@ class Store:
         if self._arquivos():
             glob = str(self.dir / "ano=*" / "part-*.parquet").replace("'", "''")
             con.execute(
-                f"""CREATE VIEW acordaos AS SELECT * EXCLUDE (rn) FROM (
+                f"""CREATE VIEW acordaos_base AS SELECT * EXCLUDE (rn) FROM (
                       SELECT *, row_number() OVER (
                         PARTITION BY id
                         ORDER BY dt_index DESC NULLS LAST, processado_em DESC) AS rn
@@ -70,7 +74,15 @@ class Store:
             )
         else:
             cols = ", ".join(f"NULL::{_duck(f.type)} AS {f.name}" for f in SCHEMA)
-            con.execute(f"CREATE VIEW acordaos AS SELECT {cols} WHERE false")
+            con.execute(f"CREATE VIEW acordaos_base AS SELECT {cols} WHERE false")
+        if self.facets_path.exists():
+            fp = str(self.facets_path).replace("'", "''")
+            con.execute(
+                f"CREATE VIEW acordaos AS SELECT b.*, f.assunto, f.assunto_norm, f.teses, f.tese_nulidade, "
+                f"f.tese_prescricao FROM acordaos_base b LEFT JOIN read_parquet('{fp}') f USING (id)")
+        else:
+            nulos = ", ".join(f"NULL::VARCHAR AS {c}" for c in FACETS_COLS)
+            con.execute(f"CREATE VIEW acordaos AS SELECT *, {nulos} FROM acordaos_base")
         return con
 
     def existing(self, ids: list[str]) -> dict[str, object]:
@@ -78,7 +90,7 @@ class Store:
         if not ids or not self._arquivos():
             return {}
         qs = ",".join("?" * len(ids))
-        rows = self.connect().execute(f"SELECT id, dt_index FROM acordaos WHERE id IN ({qs})", ids)
+        rows = self.connect().execute(f"SELECT id, dt_index FROM acordaos_base WHERE id IN ({qs})", ids)
         return dict(rows.fetchall())
 
     def compact(self) -> int:
@@ -92,7 +104,7 @@ class Store:
             ano = d.name.split("=", 1)[1]
             filtro = "ano IS NULL" if ano == "desconhecido" else f"ano = {int(ano)}"
             tmp = d / f".compact-{uuid.uuid4().hex}.tmp"
-            con.execute(f"COPY (SELECT * FROM acordaos WHERE {filtro}) TO '{tmp}' (FORMAT parquet, COMPRESSION zstd)")
+            con.execute(f"COPY (SELECT * FROM acordaos_base WHERE {filtro}) TO '{tmp}' (FORMAT parquet, COMPRESSION zstd)")
             for f in antigos:
                 f.unlink()
             tmp.rename(d / f"part-{uuid.uuid4().hex}.parquet")

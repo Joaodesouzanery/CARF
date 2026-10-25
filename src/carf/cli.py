@@ -41,7 +41,7 @@ def cmd_sync(args):
     if args.workers > 1:
         r = parallel.sincronizar_paralelo(
             config.DATA_DIR, args.ano_min, args.workers, leve=args.leve, sem_ner=args.sem_ner,
-            manter_cnpj=args.manter_cnpj, limite=args.limite)
+            manter_cnpj=args.manter_cnpj, limite=args.limite, ano_max=args.ano_max)
         print(json.dumps(r, ensure_ascii=False))
         return
     r = sincronizar(SolrClient(), Store(config.DATA_DIR), _estado(), _anonimizador(args),
@@ -64,6 +64,12 @@ def cmd_embed(args):
     n = indexar(Store(config.DATA_DIR).connect(), Indice(config.DATA_DIR, args.modelo),
                 criar_embedder(args.modelo), limite=args.limite)
     print(f"{n} acórdãos vetorizados com {args.modelo}")
+
+
+def cmd_enriquecer(args):
+    from .teses import construir_facets
+
+    construir_facets(Store(config.DATA_DIR))
 
 
 def cmd_search(args):
@@ -152,8 +158,12 @@ def cmd_gerenciais(args):
 
 
 def _filtros(args) -> dict:
-    return {k: getattr(args, k) for k in ("ano", "turma", "camara", "secao", "relator")
-            if getattr(args, k, None) is not None}
+    f = {k: getattr(args, k) for k in ("ano", "turma", "camara", "secao", "relator", "assunto")
+         if getattr(args, k, None) is not None}
+    for tema in ("nulidade", "prescricao"):
+        if getattr(args, tema, None):
+            f[f"tese_{tema}"] = getattr(args, tema).upper()
+    return f
 
 
 def main(argv=None):
@@ -162,6 +172,7 @@ def main(argv=None):
 
     s = sub.add_parser("sync", help="baixa e anonimiza acórdãos")
     s.add_argument("--ano-min", type=int, help="recorte: sessões a partir deste ano")
+    s.add_argument("--ano-max", type=int, help="recorte: sessões até este ano (com --workers)")
     s.add_argument("--limite", type=int, help="para após N documentos (teste)")
     s.add_argument("--leve", action="store_true",
                    help="metadados + ementa + decisão (sem o voto integral): rápido")
@@ -180,6 +191,10 @@ def main(argv=None):
         sp.add_argument("--ano", type=int)
         for f in ("turma", "camara", "secao", "relator"):
             sp.add_argument(f"--{f}")
+        sp.add_argument("--assunto", help="matéria da ementa contém (ex.: 'classificação de mercadorias'); rode `carf enriquecer`")
+        for tema in ("nulidade", "prescricao"):
+            sp.add_argument(f"--{tema}", choices=["acolhida", "rejeitada", "indefinida"],
+                            help=f"{tema}: como a decisão tratou a preliminar")
 
     q = sub.add_parser("search", help="busca por termos")
     q.add_argument("termos")
@@ -212,6 +227,8 @@ def main(argv=None):
     e.add_argument("--modelo", default="e5-small", help="e5-small (padrão), minilm, e5-large ou spacy")
     e.add_argument("--limite", type=int)
     e.set_defaults(fn=cmd_embed)
+    sub.add_parser("enriquecer", help="extrai matéria e teses (nulidade/prescrição) para filtrar a busca").set_defaults(
+        fn=cmd_enriquecer)
     sub.add_parser("status", help="progresso da carga paralela").set_defaults(fn=cmd_status)
     x = sub.add_parser("texto", help="baixa e anonimiza o voto integral de um acórdão (por id)")
     x.add_argument("id")

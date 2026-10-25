@@ -28,10 +28,10 @@ def _q(valor: str) -> str:
     return '"' + valor.replace("\\", "\\\\").replace('"', '\\"') + '"'
 
 
-def fatiar(client, ano_min: int | None = None) -> list[Unidade]:
+def fatiar(client, ano_min: int | None = None, ano_max: int | None = None) -> list[Unidade]:
     """Particiona o recorte em unidades disjuntas e completas (nada some, nada repete)."""
     unidades = []
-    for no in client.pivot_ano_secao(filtros_base(ano_min)):
+    for no in client.pivot_ano_secao(filtros_base(ano_min, ano_max)):
         ano = f"ano_sessao_s:{_q(str(no['value']))}"
         filhos = no.get("pivot") or []
         for f in filhos:
@@ -48,7 +48,7 @@ def fatiar(client, ano_min: int | None = None) -> list[Unidade]:
     if unidades:
         cobertas = " OR ".join("(" + " AND ".join(u.fq) + ")" for u in unidades)
         residual = (f"-({cobertas})",)
-        n = client.summary(filtros_base(ano_min) + list(residual))["num_found"]
+        n = client.summary(filtros_base(ano_min, ano_max) + list(residual))["num_found"]
         if n > 0:
             unidades.append(Unidade(residual, n))
     return unidades
@@ -70,7 +70,7 @@ def _estado_unidade(data_dir: Path, u: Unidade) -> State:
 
 
 def executar_fila(client, anon, data_dir: Path, fila: list[Unidade], ano_min, leve, limite=None,
-                  log=print, **kw) -> list[dict]:
+                  log=print, ano_max=None, **kw) -> list[dict]:
     """Roda as unidades da fila em sequência; unidades já concluídas são puladas (retomada)."""
     relatores = client.relatores()
     store, resultados = Store(data_dir), []
@@ -80,7 +80,7 @@ def executar_fila(client, anon, data_dir: Path, fila: list[Unidade], ano_min, le
             resultados.append({"unidade": u.chave, "pulada": True})
             continue
         try:
-            r = sincronizar(client, store, estado, anon, ano_min=ano_min, limite=limite, leve=leve,
+            r = sincronizar(client, store, estado, anon, ano_min=ano_min, ano_max=ano_max, limite=limite, leve=leve,
                             filtros_extra=u.fq, relatores=relatores,
                             log=lambda m, k=u.chave: log(f"[{k}] {m}"), **kw)
         except Exception as exc:  # noqa: BLE001  uma unidade ruim não derruba as outras
@@ -93,25 +93,26 @@ def executar_fila(client, anon, data_dir: Path, fila: list[Unidade], ano_min, le
 
 
 def _processo(args):
-    data_dir, fila, ano_min, leve, sem_ner, manter_cnpj, limite = args
+    data_dir, fila, ano_min, leve, sem_ner, manter_cnpj, limite, ano_max = args
     client = SolrClient()
     anon = anonimizador.criar(sem_ner, manter_cnpj)
-    return executar_fila(client, anon, Path(data_dir), fila, ano_min, leve, limite)
+    return executar_fila(client, anon, Path(data_dir), fila, ano_min, leve, limite, ano_max=ano_max)
 
 
 def sincronizar_paralelo(data_dir: Path, ano_min=None, workers=3, leve=True, sem_ner=False,
-                         manter_cnpj=False, limite=None, executor=None, client=None, log=print) -> dict:
+                         manter_cnpj=False, limite=None, executor=None, client=None, log=print,
+                         ano_max=None) -> dict:
     """Coordena a carga. Só marca a carga global como concluída quando todas as unidades terminam."""
     client = client or SolrClient()
-    unidades = fatiar(client, ano_min)
+    unidades = fatiar(client, ano_min, ano_max)
     filas = distribuir(unidades, workers)
     (data_dir / "state").mkdir(parents=True, exist_ok=True)
     run = data_dir / "state" / "run.json"
     if not run.exists():
-        run.write_text(json.dumps({"inicio": time.time(), "ano_min": ano_min, "leve": leve,
+        run.write_text(json.dumps({"inicio": time.time(), "ano_min": ano_min, "ano_max": ano_max, "leve": leve,
                                    "total": sum(u.n for u in unidades), "unidades": len(unidades)}))
     log(f"{len(unidades)} unidades, {sum(u.n for u in unidades)} documentos, {len(filas)} processos")
-    args = [(str(data_dir), f, ano_min, leve, sem_ner, manter_cnpj, limite) for f in filas]
+    args = [(str(data_dir), f, ano_min, leve, sem_ner, manter_cnpj, limite, ano_max) for f in filas]
     if executor is not None:  # injeção para testes (execução no mesmo processo)
         resultados = [r for a in args for r in executor(a)]
     else:
@@ -124,9 +125,18 @@ def sincronizar_paralelo(data_dir: Path, ano_min=None, workers=3, leve=True, sem
         marcas = [_estado_unidade(data_dir, u).data.get("last_dt_index") for u in unidades]
         marcas = [m for m in marcas if m]
         glob = State(data_dir / "state.json")
-        glob.data = {"filters": {"ano_min": ano_min}, "leve": leve, "full_done": True}
+        anterior = glob.data if glob.data.get("full_done") else {}
+        novo = {"filters": {"ano_min": ano_min}, "leve": leve, "full_done": True}
+        if ano_max:
+            # faixa parcial (ex.: 2018-2022) somada a uma carga anterior: o recorte global passa a
+            # ser o mais amplo, e a marca-d'água a mais antiga, para a incremental não perder nada
+            ant_min = (anterior.get("filters") or {}).get("ano_min")
+            if anterior and ant_min:
+                novo["filters"] = {"ano_min": min(ano_min or ant_min, ant_min)}
+                marcas += [anterior["last_dt_index"]] if anterior.get("last_dt_index") else []
         if marcas:
-            glob.data["last_dt_index"] = min(marcas)  # conservador: a incremental refaz o que faltar
+            novo["last_dt_index"] = min(marcas)  # conservador: a incremental refaz o que faltar
+        glob.data = novo
         glob.save()
     return {"unidades": len(unidades), "processos": len(filas), "completo": completo,
             "processados": sum(r.get("processados", 0) for r in resultados),

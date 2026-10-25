@@ -25,8 +25,10 @@ class State:
         os.replace(tmp, self.path)
 
 
-def filtros_base(ano_min: int | None) -> list[str]:
-    return [f"ano_sessao_s:[{ano_min} TO *]"] if ano_min else []
+def filtros_base(ano_min: int | None, ano_max: int | None = None) -> list[str]:
+    if not ano_min and not ano_max:
+        return []
+    return [f"ano_sessao_s:[{ano_min or '*'} TO {ano_max or '*'}]"]
 
 
 CAMPOS_LEVES = tuple(c for c in solr.FIELDS if c != "conteudo_txt")
@@ -109,12 +111,15 @@ def sincronizar(
     filtros_extra: tuple[str, ...] = (),
     leve: bool = False,
     relatores: list[str] | None = None,
+    ano_max: int | None = None,
 ) -> dict:
     """Baixa, anonimiza e grava. Retoma do cursor salvo se a execução anterior foi interrompida."""
-    base = filtros_base(ano_min) + list(filtros_extra)
+    base = filtros_base(ano_min, ano_max) + list(filtros_extra)
     modo = "inc" if incremental else "full"
     d = state.data
     assinatura = {"ano_min": ano_min}
+    if ano_max:
+        assinatura["ano_max"] = ano_max
     if filtros_extra:
         assinatura["extra"] = list(filtros_extra)
     if incremental:

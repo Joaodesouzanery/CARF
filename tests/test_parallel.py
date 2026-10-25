@@ -53,9 +53,9 @@ def serial(data_dir_ignorado=None, limite_por_fila=None):
     docs = corpus()
 
     def executar(args):
-        data_dir, fila, ano_min, leve, _, _, limite = args
+        data_dir, fila, ano_min, leve, _, _, limite, ano_max = args
         return par.executar_fila(cliente(docs), Anonymizer(), Path(data_dir), fila, ano_min, leve,
-                                 limite or limite_por_fila, log=lambda m: None, tamanho_pagina=4)
+                                 limite or limite_por_fila, log=lambda m: None, tamanho_pagina=4, ano_max=ano_max)
     return docs, executar
 
 
@@ -139,3 +139,26 @@ def test_unidade_com_erro_nao_derruba_as_outras(tmp_path, monkeypatch):
     assert r2["completo"] and not r2["erros"]
     d = Store(tmp_path).connect().execute("select count(distinct id) from acordaos").fetchone()[0]
     assert d == len(docs)
+
+
+def test_faixa_de_anos_soma_a_carga_anterior(tmp_path):
+    docs = corpus()  # 2023, 2024, 2025
+    _, executar = serial()
+    par.sincronizar_paralelo(tmp_path, 2025, workers=2, executor=executar, client=cliente(docs), log=lambda m: None)
+    antes = State(tmp_path / "state.json").data
+    assert antes["filters"] == {"ano_min": 2025}
+    # segunda carga: só 2023-2024; o recorte global passa a 2023 e a marca-d'água não avança
+    r = par.sincronizar_paralelo(tmp_path, 2023, workers=2, executor=executar, client=cliente(docs),
+                                 log=lambda m: None, ano_max=2024)
+    glob = State(tmp_path / "state.json").data
+    assert r["completo"] and glob["filters"] == {"ano_min": 2023} and glob["full_done"]
+    assert glob["last_dt_index"] <= antes["last_dt_index"]
+    n = Store(tmp_path).connect().execute("select count(distinct id) from acordaos").fetchone()[0]
+    assert n == len(docs)
+
+
+def test_filtros_base_com_faixa():
+    from carf.sync import filtros_base
+
+    assert filtros_base(None) == [] and filtros_base(2018) == ["ano_sessao_s:[2018 TO *]"]
+    assert filtros_base(2018, 2022) == ["ano_sessao_s:[2018 TO 2022]"]

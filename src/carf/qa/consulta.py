@@ -8,7 +8,9 @@ import pandas as pd
 from .. import config
 
 FILTROS = {"ano": "ano = ?", "turma": "turma = ?", "camara": "camara = ?", "secao": "secao = ?",
-           "relator": "relator = ?", "numero_processo": "numero_processo = ?"}
+           "relator": "relator = ?", "numero_processo": "numero_processo = ?",
+           "assunto": "assunto_norm LIKE ?",  # contém, sem acento/caixa
+           "tese_nulidade": "tese_nulidade = ?", "tese_prescricao": "tese_prescricao = ?"}
 DIMENSOES = {"ano", "turma", "camara", "secao", "relator"}
 
 # Mesma taxonomia do dado aberto oficial (gerenciais.desfecho). O mérito prevalece sobre o
@@ -79,7 +81,7 @@ def _where(filtros: dict | None) -> tuple[str, list]:
         if k not in FILTROS:
             raise ValueError(f"filtro inválido: {k}")
         cond.append(FILTROS[k])
-        params.append(v)
+        params.append(f"%{_norm(v)}%" if k == "assunto" else v)
     return (" AND ".join(cond) or "true"), params
 
 

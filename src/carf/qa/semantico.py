@@ -7,7 +7,8 @@ from . import consulta
 
 MODOS = ("lexico", "semantico", "hibrido")
 CAMPOS = ["id", "numero_decisao", "numero_processo", "turma", "camara", "secao", "relator",
-          "dt_sessao", "ano", "ementa", "nome_arquivo_pdf"]
+          "dt_sessao", "ano", "ementa", "decisao", "nome_arquivo_pdf", "assunto", "tese_nulidade",
+          "tese_prescricao"]
 
 
 def _permitidos(con, filtros) -> set[str] | None:
