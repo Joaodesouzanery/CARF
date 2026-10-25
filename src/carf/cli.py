@@ -78,7 +78,8 @@ def cmd_search(args):
             con, args.termos, _filtros(args), args.limite, args.modo,
             Indice(config.DATA_DIR, args.modelo).carregar(), criar_embedder(args.modelo))
     for r in resultados:
-        print(f"- {r['citacao']}\n  {(r['ementa'] or '')[:300]}\n")
+        extra = f"  [+{r['iguais'] - 1} acórdãos com a mesma ementa]" if r.get("iguais", 1) > 1 else ""
+        print(f"- {r['citacao']}{extra}\n  {(r['ementa'] or '')[:300]}\n")
 
 
 def cmd_stats(args):
@@ -183,8 +184,9 @@ def main(argv=None):
     q = sub.add_parser("search", help="busca por termos")
     q.add_argument("termos")
     q.add_argument("--limite", type=int, default=10)
-    q.add_argument("--modo", choices=["lexico", "semantico", "hibrido"], default="lexico")
-    q.add_argument("--modelo", default="spacy", help="e5-small, minilm, e5-large ou spacy")
+    q.add_argument("--modo", choices=["lexico", "semantico", "hibrido"], default="semantico",
+                   help="semantico (padrão) foi o melhor na avaliação; hibrido ajuda em citações/números exatos")
+    q.add_argument("--modelo", default="e5-small", help="e5-small (padrão), minilm, e5-large ou spacy")
     q.add_argument("--qualquer", action="store_true", help="léxico: basta um dos termos")
     filtros(q)
     q.set_defaults(fn=cmd_search)
@@ -207,7 +209,7 @@ def main(argv=None):
     g.set_defaults(fn=cmd_gerenciais)
 
     e = sub.add_parser("embed", help="vetoriza ementas para a busca semântica")
-    e.add_argument("--modelo", default="spacy", help="e5-small, minilm, e5-large ou spacy")
+    e.add_argument("--modelo", default="e5-small", help="e5-small (padrão), minilm, e5-large ou spacy")
     e.add_argument("--limite", type=int)
     e.set_defaults(fn=cmd_embed)
     sub.add_parser("status", help="progresso da carga paralela").set_defaults(fn=cmd_status)
@@ -236,7 +238,7 @@ def main(argv=None):
     sub.add_parser("compact", help="remove versões antigas").set_defaults(fn=cmd_compact)
     a = sub.add_parser("ask", help="pergunta em linguagem natural (requer ANTHROPIC_API_KEY)")
     a.add_argument("pergunta")
-    a.add_argument("--modelo", default="spacy", help="modelo de embeddings da busca semântica")
+    a.add_argument("--modelo", default="e5-small", help="modelo de embeddings da busca semântica")
     a.set_defaults(fn=cmd_ask)
 
     args = p.parse_args(argv)

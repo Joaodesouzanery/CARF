@@ -111,3 +111,26 @@ def test_indice_deduplica_por_id(tmp_path):
     idx.carregar()
     assert len(idx.ids) == 2
     assert idx.buscar(np.array([0, 1], dtype=np.float32), 2)[0][1] == pytest.approx(1.0, abs=1e-3)
+
+
+def test_agrupa_ementas_iguais_salvo_datas():
+    from carf.qa.semantico import agrupar_iguais
+
+    linhas = [
+        {"id": "1", "ementa": "Assunto: PIS Período de apuração: 01/01/2013 a 31/03/2013 FRETE. CRÉDITO."},
+        {"id": "2", "ementa": "Assunto: PIS Período de apuração: 01/04/2013 a 30/06/2013 FRETE. CRÉDITO."},
+        {"id": "3", "ementa": "Outra ementa diferente."},
+        {"id": "4", "ementa": "Assunto: PIS Período de apuração: 01/07/2013 a 30/09/2013 FRETE. CRÉDITO."},
+    ]
+    g = agrupar_iguais(linhas, 10)
+    assert [r["id"] for r in g] == ["1", "3"] and g[0]["iguais"] == 3 and g[0]["ids_iguais"] == ["2", "4"]
+    assert agrupar_iguais(linhas, 1) == g[:1]
+
+
+def test_busca_agrupada_completa_o_limite_com_distintos(base):
+    raiz, con = base
+    emb, idx = SacoDePalavras(), Indice(raiz, "teste")
+    indexar(con, idx, emb, log=lambda m: None)
+    idx.carregar()
+    r = semantico.buscar(con, "irpj csll compensacao", modo="semantico", indice=idx, embedder=emb, limite=3)
+    assert len({x["id"] for x in r}) == len(r) and all("iguais" in x for x in r)

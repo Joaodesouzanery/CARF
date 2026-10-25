@@ -30,11 +30,13 @@ TOOLS = [
          "filtros": {"type": "object", "description": "ano, turma, camara, secao, relator"},
          "limite": {"type": "integer", "default": 8}}, "required": ["termos"]}},
     {"name": "buscar_semantico",
-     "description": "Busca por significado (híbrida: semântica + palavras). Use para perguntas "
-                    "conceituais. Retorna ementa e citação.",
+     "description": "Busca por significado. Use para perguntas conceituais. Agrupa ementas idênticas "
+                    "(campo `iguais`). Retorna ementa e citação.",
      "input_schema": {"type": "object", "properties": {
          "consulta": {"type": "string"},
          "filtros": {"type": "object", "description": "ano, turma, camara, secao, relator"},
+         "modo": {"type": "string", "enum": ["semantico", "hibrido"],
+                  "description": "semantico (padrão); hibrido quando a consulta traz número/citação exata"},
          "limite": {"type": "integer", "default": 8}}, "required": ["consulta"]}},
     {"name": "desfecho_oficial",
      "description": "Resultado OFICIAL dos julgamentos (dado aberto) por tributo, turma, ano, "
@@ -74,7 +76,7 @@ def executar(con, nome: str, args: dict, ger=None, sem=None) -> str:
             if sem is None:
                 return json.dumps({"erro": "busca semântica indisponível: gere os vetores com `carf embed`"})
             r = sem_mod.buscar(con, args["consulta"], args.get("filtros"), min(args.get("limite", 8), 20),
-                               "hibrido", sem[0], sem[1])
+                               args.get("modo", "semantico"), sem[0], sem[1])
         elif nome in ("desfecho_oficial", "estoque"):
             if ger is None:
                 return json.dumps({"erro": "dados oficiais indisponíveis: rode `carf gerenciais atualizar`"})

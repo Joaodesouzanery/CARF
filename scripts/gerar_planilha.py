@@ -1,7 +1,7 @@
 """Gera uma planilha enxuta (XLSX) com o essencial da base.
 
 Abas: Resumo (fórmulas), Acórdãos (sem o voto), Desfechos oficiais, Estoque, Revisão LGPD.
-Uso: python scripts/gerar_planilha.py DATA_DIR SAIDA.xlsx [REVISAO.csv]
+Uso: python scripts/gerar_planilha.py DATA_DIR SAIDA.xlsx [REVISAO.csv] [BUSCA_JULGADA.csv]
 """
 
 import csv
@@ -12,6 +12,9 @@ import pandas as pd
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from julgamento_busca import calcular
 
 from carf.qa import consulta
 from carf.qa import gerenciais as qg
@@ -226,6 +229,46 @@ def aba_revisao(wb, caminho: Path):
     return ws, 4 + len(linhas)
 
 
+ROTULOS_BUSCA = {
+    "semantico-e5-small": "Semântica (e5-small) — PADRÃO",
+    "hibrido-e5-small": "Híbrida (e5-small + palavras)",
+    "semantico-spacy": "Semântica (vetores spaCy)",
+    "hibrido-spacy": "Híbrida (spaCy + palavras)",
+    "lexico-OU": "Léxica (qualquer termo, sem pesos)",
+}
+
+
+def aba_busca(wb, caminho: Path):
+    r = calcular(str(caminho))
+    ws = wb.create_sheet("Busca (comparação)")
+    ws["A1"] = "Qualidade da busca: 20 consultas conceituais, 548 acórdãos julgados"
+    ws["A1"].font = Font(name=FONTE, bold=True, size=12)
+    ws["A2"] = ("Relevância (0 = não, 1 = relacionado, 2 = responde bem) atribuída por IA sobre as ementas, sem ver qual "
+                "método trouxe cada acórdão. Aproximação: o advogado deve validar uma amostra. Pooling: documentos que "
+                "nenhum método trouxe não foram julgados.")
+    ws["A2"].font = Font(name=FONTE, italic=True, size=9)
+    ws["A2"].alignment = Alignment(wrap_text=True, vertical="top")
+    ws.merge_cells("A2:E2")
+    ws.row_dimensions[2].height = 52
+    cabecalho(ws, ["Método", "P@8", "nDCG@8", "P@8 vs. léxica", "Leitura"], [38, 10, 10, 16, 70], linha=4)
+    ws.freeze_panes = None
+    ws.auto_filter.ref = None
+    ordem = sorted(r["metodos"].items(), key=lambda kv: -kv[1]["ndcg8"])
+    lex_linha = 5 + [k for k, _ in ordem].index("lexico-OU")
+    notas = {"semantico-e5-small": "Melhor em tudo; é o padrão de `carf search` e `carf ask`.",
+             "hibrido-e5-small": "A parte léxica puxa ruído nas consultas conceituais; útil quando há número/citação exata.",
+             "lexico-OU": "Baseline ingênuo (substring, qualquer termo), não BM25; mostra o piso."}
+    for i, (m, v) in enumerate(ordem, 5):
+        ws.cell(row=i, column=1, value=ROTULOS_BUSCA.get(m, m))
+        for c, k in ((2, "p8"), (3, "ndcg8")):
+            cel = ws.cell(row=i, column=c, value=round(v[k], 4))
+            cel.font = Font(name=FONTE, color="0000FF")
+            cel.number_format = "0.000"
+        ws.cell(row=i, column=4, value=f"=IFERROR(B{i}/B${lex_linha}-1,0)").number_format = "+0%;-0%;0%"
+        ws.cell(row=i, column=5, value=notas.get(m, ""))
+    return ws
+
+
 def aba_resumo(wb, n_acord, ult_acord, tot_des, col_des, ult_rev):
     ws = wb["Resumo"]
     ws["A1"] = "CARF Intelligence: resumo da base"
@@ -252,6 +295,7 @@ def aba_resumo(wb, n_acord, ult_acord, tot_des, col_des, ult_rev):
         ("Resultado (heurística): acurácia geral vs. oficial", "92,7% a 97,6%", "3 amostras de 2025, ~1,7 mil decisões cada, scripts/avaliar_resultado.py"),
         ("Resultado (heurística): decisões sem classificação (OUTRO)", "0,9% a 4,6%", "idem"),
         ("Máscaras de nome por mil palavras (ementa+decisão)", "0,18", "300 acórdãos, medição de 25/10/2026"),
+        ("Busca: melhor método (nDCG@8)", "e5 semântica", "0,95 contra 0,21 da léxica ingênua; ver aba Busca (comparação). Julgamento por IA"),
         ("Pré-revisão (IA) de 100 acórdãos: com vazamento", "1%", "1 de 100 (IC 95%: 0,2% a 5,4%); corrigido depois. NÃO é revisão humana; ver docs/lgpd"),
         ("Taxa de vazamento real", "pendente", "depende da revisão humana (aba Revisão LGPD)"),
         ("Documentos já revisados (aba Revisão LGPD)", f"=COUNT('Revisão LGPD'!$E$5:$E${ult_rev})", "preenchimento manual"),
@@ -287,7 +331,7 @@ def aba_resumo(wb, n_acord, ult_acord, tot_des, col_des, ult_rev):
     return ws, posicoes
 
 
-def main(data_dir: str, saida: str, revisao: str | None):
+def main(data_dir: str, saida: str, revisao: str | None, busca: str | None = None):
     raiz = Path(data_dir)
     con = Store(raiz).connect()
     wb = novo()
@@ -299,6 +343,8 @@ def main(data_dir: str, saida: str, revisao: str | None):
     ult_rev = 4
     if revisao:
         _, ult_rev = aba_revisao(wb, Path(revisao))
+    if busca:
+        aba_busca(wb, Path(busca))
     ws, pos = aba_resumo(wb, len(df), ws_a.max_row, tot_des, col_des, ult_rev)
     # estoque total = linha "Total" do bloco por tributo
     tot_est = next(r for r in range(6, ws_e.max_row + 1) if ws_e.cell(row=r, column=1).value == "Total")
@@ -317,4 +363,5 @@ def main(data_dir: str, saida: str, revisao: str | None):
 
 
 if __name__ == "__main__":
-    main(sys.argv[1], sys.argv[2], sys.argv[3] if len(sys.argv) > 3 else None)
+    main(sys.argv[1], sys.argv[2], sys.argv[3] if len(sys.argv) > 3 else None,
+         sys.argv[4] if len(sys.argv) > 4 else None)

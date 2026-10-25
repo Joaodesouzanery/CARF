@@ -77,15 +77,15 @@ def gerar(data_dir: str, modelos: list[str]):
     print(f"{len(linhas)} linhas em {destino}")
 
 
-def pontuar(caminho: str):
+def calcular(caminho: str) -> dict:
+    """P@8 e nDCG@8 por método a partir da planilha julgada (linhas sem nota ficam de fora)."""
     with open(caminho, newline="", encoding="utf-8") as f:
         linhas = [r for r in csv.DictReader(f) if r["relevante"].strip() != ""]
     por_q: dict[int, list[dict]] = {}
     for r in linhas:
         por_q.setdefault(int(r["q"]), []).append(r)
     metodos_vistos = sorted({k.split("=")[0] for r in linhas for k in r["ranks"].split(";") if k})
-    print(f"{len(por_q)} consultas julgadas, {len(linhas)} documentos\n")
-    print(f"{'método':24s} {'P@8':>6s} {'nDCG@8':>7s}")
+    res = {"consultas": len(por_q), "documentos": len(linhas), "metodos": {}}
     for m in metodos_vistos:
         p, n = [], []
         for rs in por_q.values():
@@ -98,7 +98,16 @@ def pontuar(caminho: str):
             ideal = sorted(rel.values(), reverse=True)[:TOP]
             idcg = sum((2 ** g - 1) / math.log2(k + 2) for k, g in enumerate(ideal))
             n.append(dcg / idcg if idcg else 0.0)
-        print(f"{m:24s} {sum(p) / len(p):6.3f} {sum(n) / len(n):7.3f}")
+        res["metodos"][m] = {"p8": sum(p) / len(p), "ndcg8": sum(n) / len(n)}
+    return res
+
+
+def pontuar(caminho: str):
+    r = calcular(caminho)
+    print(f"{r['consultas']} consultas julgadas, {r['documentos']} documentos\n")
+    print(f"{'método':24s} {'P@8':>6s} {'nDCG@8':>7s}")
+    for m, v in r["metodos"].items():
+        print(f"{m:24s} {v['p8']:6.3f} {v['ndcg8']:7.3f}")
 
 
 if __name__ == "__main__":

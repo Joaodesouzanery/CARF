@@ -26,13 +26,13 @@ carf sync --ano-min 2023 --incremental           # traz só o que mudou (usa os 
 carf texto 10006836                              # voto integral de um acórdão, anonimizado
 
 # 2) Dados abertos oficiais (sem token)
-carf gerenciais atualizar                        # baixa só o que mudou (ETag/hash) e ingere
+carf gerenciais atualizar --workers 3            # baixa só o que mudou (ETag/hash) e ingere; www.gov.br primeiro
 carf gerenciais desfechos tributo                # resultado OFICIAL por tributo/turma/ano/tema
 carf gerenciais estoque fase_processual          # acervo pendente no mês mais recente
 
 # 3) Busca e perguntas
-carf embed --modelo spacy                        # vetoriza ementas (e5-small/minilm: ver abaixo)
-carf search "conceito de insumo" --modo hibrido --ano 2025
+carf embed                                       # vetoriza ementas com o e5-small (~40 min para 85 mil)
+carf search "conceito de insumo" --ano 2025      # semântica e5 (padrão); --modo hibrido p/ números e citações
 carf stats turma --resultado                     # heurística sobre o texto da decisão
 carf ask "Qual a tendência de provimento em PIS/COFINS?"   # requer ANTHROPIC_API_KEY
 
@@ -90,6 +90,15 @@ e `carf gerenciais atualizar`.
   "ônus da prova"); com os filtros e o vocabulário do corpus, em ementa+decisão: 12 máscaras em
   300 acórdãos (0,18 por mil palavras), quase todas pessoas ou empresas; 2.006 menções a agentes
   públicos preservadas. **Taxa de vazamento real:** depende da revisão humana (pendente).
+- **Busca** (`scripts/julgamento_busca.py`; 20 consultas conceituais, 548 acórdãos julgados por IA às
+  cegas quanto ao método; P@8 / nDCG@8): **e5 semântica 0,96 / 0,95**; e5 híbrida 0,83 / 0,81; spaCy
+  semântica 0,78 / 0,55; léxica ingênua (qualquer termo, não é BM25) 0,33 / 0,21. Cerca de 16% do top-8
+  é ementa repetida (recursos repetitivos): os resultados agrupam ementas idênticas (`iguais`).
+- **Qualidade dos dados oficiais:** o rótulo de tributo muda entre anos ("COFINS" x "COFINS - CONTRIBUIÇÃO
+  PARA O FINANCIAMENTO..."); fica a sigla normalizada (`tributo`) e o original (`tributo_original`).
+  Até 2017 há muitos "não informado" (~48 mil registros no total).
+- **Pré-revisão por IA de 100 acórdãos** (antes da correção das listas de nomes): 1 vazamento (2 nomes) em
+  100 documentos (IC 95%: 0,2% a 5,4%), já corrigido. **Não substitui a revisão humana.**
 - **Desempenho:** texto integral ~0,7 s/doc/processo; camada leve ~50 docs/s com 3 processos.
 
 ## Limitações
@@ -97,17 +106,17 @@ e `carf gerenciais atualizar`.
   profundo usa NER do mesmo tipo: servem para achar regressões, não provam ausência de dado pessoal.
 - Nomes de doutrinadores, advogados e empresas com nome de pessoa podem ser mascarados;
   agentes públicos não listados e sem título podem ser mascarados.
-- Busca semântica: com os vetores do spaCy o ganho sobre a léxica é pequeno. Os modelos e5/minilm
-  precisam do host `cas-server.xethub.hf.co` liberado. **Não há avaliação de qualidade conclusiva:**
-  o tema oficial (`concentracao_tematica`) classifica o tipo de lançamento, não o assunto da
-  ementa, e por isso não serve de gabarito. Use `scripts/julgamento_busca.py` (julgamento por
-  *pooling*) com revisão do advogado.
+- Busca semântica: avaliada com julgamento de relevância feito por IA (aproximação). O advogado deve
+  validar uma amostra (`revisao/busca-julgamento.csv`). O tema oficial (`concentracao_tematica`) não
+  serve de gabarito: classifica o tipo de lançamento, não o assunto da ementa. O e5 precisa dos hosts
+  `huggingface.co`, `cas-server.xethub.hf.co` e `us.aws.cdn.hf.co` liberados na primeira execução.
+- Os textos livres dos CSVs oficiais (ementa, decisão) não são guardados (minimização).
 - `carf ask` foi testado com cliente falso (laço de ferramentas, erros, limite de turnos), mas não
   contra a API real (falta a chave).
 - Resultado heurístico (anos sem CSV oficial): vale a taxa acima; MISTO/OUTRO são abstenções.
 
 ## Testes
 ```bash
-pytest          # 131 testes, sem rede
+pytest          # 151 testes, sem rede
 ruff check src tests scripts
 ```
