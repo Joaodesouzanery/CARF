@@ -84,7 +84,7 @@ tema está no título dela. Voto vencido é ignorado e "acolher preliminar de il
 Decadência ficou de fora de propósito: as ementas enunciam regras, não o resultado.
 Medição por leitura de acórdãos (nulidade, 2023+): REJEITADA acertou 33 de 33 em amostra nova e cerca de 17 de 20
 nas decididas só pela ementa; ACOLHIDA acertou 25 de 30 (2 erradas, 3 sem sinal explícito na decisão). **O recall do
-ACOLHIDA não foi medido** e a abstenção (INDEFINIDA) é de ~9% dos acórdãos que citam nulidade. Use como filtro de
+ACOLHIDA não foi medido** e a abstenção (INDEFINIDA) é de ~12% dos acórdãos 2018+ com tese de nulidade. Use como filtro de
 triagem e confira o trecho da decisão. Cerca de 18% dos acórdãos não têm "Assunto:" na ementa (formato antigo).
 
 ## Painel, API e servidor
@@ -107,8 +107,8 @@ triagem e confira o trecho da decisão. Cerca de 18% dos acórdãos não têm "A
    `docs/lgpd/`.
 
 ## Medições (dados reais)
-- **Cobertura:** a carga leve de 2023+ trouxe 85.710 acórdãos distintos, igual ao `numFound` do
-  índice, e as contagens por ano batem com o índice. O índice tem 19.691 acórdãos+resoluções em
+- **Cobertura:** a carga leve de 2018 a 2026 trouxe 232.282 acórdãos distintos (2018–2022: 146.572 em ~55 min com 3
+  processos); as contagens por ano batem exatamente com o `numFound` do índice (2023+: 85.710). O índice tem 19.691 acórdãos+resoluções em
   2025 contra 19.525 no CSV oficial (+0,85%); as 2.385 resoluções batem exatamente com o PDF gerencial.
 - **Classificação de resultado × resultado oficial** (`scripts/avaliar_resultado.py`, decisões com um
   único recurso, 2025, três amostras separadas, a terceira não vista durante o ajuste): "OUTRO" entre
