@@ -43,7 +43,8 @@ def desfecho_por(con, por: str, filtros=None, so_acordaos=True) -> pd.DataFrame:
     where, params = _filtros(filtros, DIM_JULG)
     extra = " AND tipo_resultado = 'Acórdão'" if so_acordaos else ""
     df = con.execute(
-        f"""SELECT {por} AS {por}, desfecho, count(*) AS n FROM julgamentos
+        f"""SELECT coalesce(CAST({por} AS VARCHAR), '(não informado)') AS {por}, desfecho, count(*) AS n
+            FROM julgamentos
             WHERE {where}{extra} AND desfecho IS NOT NULL GROUP BY 1, 2""",
         params,
     ).df()

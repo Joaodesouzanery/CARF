@@ -160,3 +160,13 @@ def test_reingerir_aplica_anonimizador_sem_rede(tmp_path):
     assert "529.982.247-25" in pd.read_parquet(p)["texto_ementa"][0]
     assert g.reingerir(tmp_path, Anonymizer(), log=lambda m: None) == ["carf_julgamentos_2025.zip"]
     assert "529.982.247-25" not in pd.read_parquet(p)["texto_ementa"][0]
+
+
+def test_registros_sem_a_dimensao_nao_somem(tmp_path):
+    linhas = JULG.rstrip("\n").split("\n")
+    linhas[1] = linhas[1].replace('"COFINS"', "")  # primeiro acórdão sem tributo
+    zip_p = zip_de(tmp_path, "carf_julgamentos_2025.zip", "\n".join(linhas) + "\n")
+    g.ingerir_julgamentos(zip_p, tmp_path / "gerenciais" / "julgamentos")
+    con = qg.conectar(tmp_path)
+    t = qg.desfecho_por(con, "tributo").set_index("tributo")
+    assert "(não informado)" in t.index and int(t["total"].sum()) == 3  # os 3 acórdãos com desfecho
