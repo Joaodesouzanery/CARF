@@ -52,8 +52,9 @@ def dados_acordaos(con, raiz: Path) -> pd.DataFrame:
     df["link"] = LINK_BASE + df.nome_arquivo_pdf.fillna("")
     df.loc[df.nome_arquivo_pdf.isna(), "link"] = None
     df = df.drop(columns="nome_arquivo_pdf")
-    j = pd.read_parquet(raiz / "gerenciais/julgamentos/julgamentos_2025.parquet",
-                        columns=["numero_decisao", "tributo", "desfecho", "tipo_resultado"])
+    j = pd.concat(
+        [pd.read_parquet(f, columns=["numero_decisao", "tributo", "desfecho", "tipo_resultado"])
+         for f in sorted((raiz / "gerenciais/julgamentos").glob("julgamentos_*.parquet"))])
     j = j[j.tipo_resultado == "Acórdão"]
     grp = j.groupby("numero_decisao").agg(tributo=("tributo", "first"), n=("desfecho", "size"),
                                           desfecho=("desfecho", "first"))
@@ -66,8 +67,8 @@ def dados_acordaos(con, raiz: Path) -> pd.DataFrame:
 def aba_acordaos(wb, df):
     ws = wb.create_sheet("Acórdãos")
     cols = ["ID", "Nº decisão", "Processo", "Turma", "Seção", "Relator", "Data da sessão", "Ano",
-            "Ementa (200 car.)", "Resultado (heurística)", "Link do PDF", "Tributo (oficial 2025)",
-            "Resultado oficial (2025)"]
+            "Ementa (200 car.)", "Resultado (heurística)", "Link do PDF", "Tributo (oficial)",
+            "Resultado oficial"]
     cabecalho(ws, cols, [11, 14, 22, 38, 26, 28, 13, 7, 60, 18, 40, 22, 22])
     ordem = ["id", "numero_decisao", "numero_processo", "turma", "secao", "relator", "dt_sessao", "ano",
              "ementa", "resultado_heuristico", "link", "tributo", "resultado_oficial"]
@@ -78,48 +79,71 @@ def aba_acordaos(wb, df):
     return ws
 
 
-def aba_desfechos(wb, raiz: Path):
-    con = qg.conectar(raiz)
-    t = qg.desfecho_por(con, "tributo")
-    ws = wb.create_sheet("Desfechos 2025")
-    ws["A1"] = "Resultado OFICIAL dos recursos julgados em 2025 (acórdãos), por tributo"
-    ws["A1"].font = Font(name=FONTE, bold=True, size=12)
-    ws["A2"] = ("Fonte: dado aberto CARF - Julgamentos de processos (carf_julgamentos_2025.zip). "
-                "Contagens são entradas (azul); totais e percentuais são fórmulas.")
-    ws["A2"].font = Font(name=FONTE, italic=True, size=9)
-    cols = [c for c in t.columns if c not in ("tributo", "total")]
-    cabecalho(ws, ["Tributo", *cols, "Total", "% provido (total + parcial)", "% negado"],
-              [34] + [14] * len(cols) + [10, 16, 10], linha=4)
-    for i, r in enumerate(t.itertuples(index=False), 5):
-        ws.cell(row=i, column=1, value=r.tributo)
+def _bloco_desfechos(ws, linha, titulo, df, rotulo, cols):
+    """Tabela rótulo x desfecho: contagens em azul; total e percentuais em fórmula. Devolve linhas."""
+    ws.cell(row=linha, column=1, value=titulo).font = Font(name=FONTE, bold=True)
+    cabecalho(ws, [rotulo, *cols, "Total", "% provido (total + parcial)", "% negado"],
+              [34] + [14] * len(cols) + [10, 16, 10], linha=linha + 1)
+    ws.freeze_panes = None
+    ws.auto_filter.ref = None
+    ini = linha + 2
+    for i, r in enumerate(df.itertuples(index=False), ini):
+        ws.cell(row=i, column=1, value=str(r[0]))
         for j, c in enumerate(cols, 2):
-            cel = ws.cell(row=i, column=j, value=int(getattr(r, c)))
+            v = getattr(r, c) if hasattr(r, c) else 0
+            cel = ws.cell(row=i, column=j, value=int(v))
             cel.font = Font(name=FONTE, color="0000FF")
             cel.number_format = "#,##0"
-    ult = 4 + len(t)
-    ini, fim = get_column_letter(2), get_column_letter(1 + len(cols))
-    col_tot = 2 + len(cols)
-    idx = {c: get_column_letter(2 + k) for k, c in enumerate(cols)}
-    for i in range(5, ult + 1):
-        ws.cell(row=i, column=col_tot, value=f"=SUM({ini}{i}:{fim}{i})").number_format = "#,##0"
-        pv = f"({idx['PROVIDO']}{i}+{idx['PROVIDO_PARCIAL']}{i})"
-        ws.cell(row=i, column=col_tot + 1, value=f"=IFERROR({pv}/{get_column_letter(col_tot)}{i},0)").number_format = "0.0%"
-        ws.cell(row=i, column=col_tot + 2,
-                value=f"=IFERROR({idx['NEGADO']}{i}/{get_column_letter(col_tot)}{i},0)").number_format = "0.0%"
+    ult = ini + len(df) - 1
     tot = ult + 1
-    ws.cell(row=tot, column=1, value="Total").font = Font(name=FONTE, bold=True)
-    for j in range(2, col_tot + 1):
-        L = get_column_letter(j)
-        c = ws.cell(row=tot, column=j, value=f"=SUM({L}5:{L}{ult})")
-        c.font = Font(name=FONTE, bold=True)
-        c.number_format = "#,##0"
-        c.border = Border(top=fino)
+    idx = {c: get_column_letter(2 + k) for k, c in enumerate(cols)}
+    col_tot = 2 + len(cols)
     L = get_column_letter(col_tot)
-    pv = f"({idx['PROVIDO']}{tot}+{idx['PROVIDO_PARCIAL']}{tot})"
-    ws.cell(row=tot, column=col_tot + 1, value=f"=IFERROR({pv}/{L}{tot},0)").number_format = "0.0%"
-    ws.cell(row=tot, column=col_tot + 2, value=f"=IFERROR({idx['NEGADO']}{tot}/{L}{tot},0)").number_format = "0.0%"
-    ws.freeze_panes = "B5"
-    return ws, tot, get_column_letter(col_tot)
+    primeira, ultima = get_column_letter(2), get_column_letter(1 + len(cols))
+    for i in range(ini, tot + 1):
+        if i == tot:
+            ws.cell(row=i, column=1, value="Total").font = Font(name=FONTE, bold=True)
+            for j in range(2, col_tot):
+                Lj = get_column_letter(j)
+                c = ws.cell(row=i, column=j, value=f"=SUM({Lj}{ini}:{Lj}{ult})")
+                c.font = Font(name=FONTE, bold=True)
+                c.number_format = "#,##0"
+                c.border = Border(top=fino)
+        ws.cell(row=i, column=col_tot, value=f"=SUM({primeira}{i}:{ultima}{i})").number_format = "#,##0"
+        pv = f"({idx['PROVIDO']}{i}+{idx['PROVIDO_PARCIAL']}{i})"
+        ws.cell(row=i, column=col_tot + 1, value=f"=IFERROR({pv}/{L}{i},0)").number_format = "0.0%"
+        ws.cell(row=i, column=col_tot + 2, value=f"=IFERROR({idx['NEGADO']}{i}/{L}{i},0)").number_format = "0.0%"
+    return tot, L
+
+
+def aba_desfechos(wb, raiz: Path):
+    con = qg.conectar(raiz)
+    ws = wb.create_sheet("Desfechos oficiais")
+    ws["A1"] = "Resultado OFICIAL dos recursos julgados (acórdãos)"
+    ws["A1"].font = Font(name=FONTE, bold=True, size=12)
+    ws["A2"] = ("Fonte: dado aberto CARF - Julgamentos de processos. Contagens são entradas (azul); "
+                "totais e percentuais são fórmulas. Anos sem arquivo carregado não aparecem.")
+    ws["A2"].font = Font(name=FONTE, italic=True, size=9)
+    base = ("SELECT {dim} AS d, desfecho, count(*) AS n FROM julgamentos WHERE tipo_resultado = 'Acórdão' "
+            "AND desfecho IS NOT NULL {filtro} GROUP BY 1, 2")
+
+    def tabela(dim, filtro="", ordem="total"):
+        df = con.execute(base.format(dim=dim, filtro=filtro)).df()
+        t = df.pivot_table(index="d", columns="desfecho", values="n", fill_value=0)
+        t["total"] = t.sum(axis=1)
+        t = t.sort_values(ordem, ascending=(ordem == "d")) if ordem != "d" else t.sort_index()
+        return t.drop(columns="total").reset_index(), list(t.drop(columns="total").columns)
+
+    ano_df, ano_cols = tabela("CAST(ano AS VARCHAR)", ordem="d")
+    trib_df, trib_cols = tabela("coalesce(tributo, '(não informado)')", "AND ano BETWEEN 2023 AND 2025")
+    cols = sorted(set(ano_cols) | set(trib_cols))
+    for df in (ano_df, trib_df):
+        for c in cols:
+            if c not in df:
+                df[c] = 0
+    tot_ano, col_tot = _bloco_desfechos(ws, 4, "Por ano de sessão", ano_df[["d", *cols]], "Ano", cols)
+    _bloco_desfechos(ws, tot_ano + 3, "Por tributo, sessões de 2023 a 2025", trib_df[["d", *cols]], "Tributo", cols)
+    return ws, tot_ano, col_tot
 
 
 def aba_estoque(wb, raiz: Path):
@@ -217,7 +241,7 @@ def aba_resumo(wb, n_acord, ult_acord, tot_des, col_des, ult_rev):
         ("  sessões em 2025", f"=COUNTIF({ac},2025)", "aba Acórdãos"),
         ("  sessões em 2026 (parcial)", f"=COUNTIF({ac},2026)", "aba Acórdãos"),
         ("  ano de sessão inválido ou ausente", f"=COUNTBLANK({ac})", "aba Acórdãos"),
-        ("Recursos julgados em 2025 (oficial)", f"='Desfechos 2025'!{col_des}{tot_des}", "aba Desfechos 2025"),
+        ("Recursos julgados, todos os anos carregados (oficial)", f"='Desfechos oficiais'!{col_des}{tot_des}", "aba Desfechos oficiais"),
         ("Processos em estoque (mês mais recente)", "=Estoque!B" + str(0), "aba Estoque"),
         ("FONTES E ATUALIZAÇÃO", None, None),
         ("Índice de acórdãos: última indexação", "24/10/2026", "campo dt_index_tdt do índice Solr do CARF, medido em 25/10/2026"),
@@ -228,12 +252,13 @@ def aba_resumo(wb, n_acord, ult_acord, tot_des, col_des, ult_rev):
         ("Resultado (heurística): acurácia geral vs. oficial", "92,7% a 97,6%", "3 amostras de 2025, ~1,7 mil decisões cada, scripts/avaliar_resultado.py"),
         ("Resultado (heurística): decisões sem classificação (OUTRO)", "0,9% a 4,6%", "idem"),
         ("Máscaras de nome por mil palavras (ementa+decisão)", "0,18", "300 acórdãos, medição de 25/10/2026"),
+        ("Pré-revisão (IA) de 100 acórdãos: com vazamento", "1%", "1 de 100 (IC 95%: 0,2% a 5,4%); corrigido depois. NÃO é revisão humana; ver docs/lgpd"),
         ("Taxa de vazamento real", "pendente", "depende da revisão humana (aba Revisão LGPD)"),
         ("Documentos já revisados (aba Revisão LGPD)", f"=COUNT('Revisão LGPD'!$E$5:$E${ult_rev})", "preenchimento manual"),
         ("  com nome ou identificador remanescente", f"=SUMPRODUCT(--(('Revisão LGPD'!$E$5:$E${ult_rev}+'Revisão LGPD'!$F$5:$F${ult_rev})>0))", "preenchimento manual"),
         ("  taxa de documentos com vazamento", None, "preenchimento manual"),
         ("LIMITES", None, None),
-        ("Coluna 'Resultado (heurística)'", "indicativa", "é heurística sobre o texto da decisão; o oficial só existe para 2025 (outros anos: arquivos em carf.economia.gov.br)"),
+        ("Coluna 'Resultado (heurística)'", "indicativa", "heurística sobre o texto da decisão; use a coluna Resultado oficial (preenchida quando o ano tem arquivo oficial carregado)"),
         ("Anonimização", "reduz risco", "não elimina; ver docs/lgpd/ e a aba Revisão LGPD"),
         ("Esta planilha", "não é parecer", "apoio à pesquisa; confira sempre o acórdão de origem (coluna Link do PDF)"),
     ]

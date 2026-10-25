@@ -93,30 +93,44 @@ def tipo_recurso(resultado: str | None) -> str | None:
     return "OUTRO"
 
 
+def urls_candidatas(rec: Recurso) -> list[str]:
+    """O mesmo arquivo costuma existir em www.gov.br (nome em minúsculas) e no host antigo."""
+    novo = BASE + rec.arquivo.lower()
+    return [novo] if rec.url == novo else [novo, rec.url]
+
+
 def baixar(rec: Recurso, destino: Path, estado: dict, session=None) -> dict:
     """Baixa só se mudou (ETag/Last-Modified). Devolve {'status': ..., 'arquivo': Path|None}."""
     session = session or requests.Session()
     destino.mkdir(parents=True, exist_ok=True)
     meta = estado.get(rec.url, {})
-    headers = {"User-Agent": config.USER_AGENT}
-    if meta.get("etag"):
-        headers["If-None-Match"] = meta["etag"]
-    if meta.get("last_modified"):
-        headers["If-Modified-Since"] = meta["last_modified"]
     alvo = destino / rec.arquivo
-    if not (meta and alvo.exists()):
-        headers.pop("If-None-Match", None)
-        headers.pop("If-Modified-Since", None)
-    try:
-        resp = session.get(rec.url, headers=headers, timeout=300, allow_redirects=True)
-    except requests.RequestException as exc:
-        return {"status": "inacessivel", "erro": type(exc).__name__, "arquivo": None}
+    headers = {"User-Agent": config.USER_AGENT}
+    if meta and alvo.exists():
+        if meta.get("etag"):
+            headers["If-None-Match"] = meta["etag"]
+        if meta.get("last_modified"):
+            headers["If-Modified-Since"] = meta["last_modified"]
+    resp, falha = None, "inexistente"
+    for url in urls_candidatas(rec):
+        try:
+            r = session.get(url, headers=headers, timeout=300, allow_redirects=True)
+        except requests.RequestException as exc:
+            falha = "inacessivel"
+            erro = type(exc).__name__
+            continue
+        if r.status_code in (200, 304):
+            resp = r
+            break
+        if r.status_code != 404:
+            falha = f"http_{r.status_code}"
+    if resp is None:
+        out = {"status": falha, "arquivo": None}
+        if falha == "inacessivel":
+            out["erro"] = erro
+        return out
     if resp.status_code == 304:
         return {"status": "inalterado", "arquivo": alvo}
-    if resp.status_code == 404:
-        return {"status": "inexistente", "arquivo": None}
-    if resp.status_code != 200:
-        return {"status": f"http_{resp.status_code}", "arquivo": None}
     sha = hashlib.sha256(resp.content).hexdigest()
     if meta.get("sha256") == sha and alvo.exists():
         return {"status": "inalterado", "arquivo": alvo}
@@ -138,14 +152,21 @@ def _ler_csv(zip_path: Path) -> pd.DataFrame:
             return pd.read_csv(io.TextIOWrapper(f, encoding="utf-8-sig"), dtype=str)
 
 
-def ingerir_julgamentos(zip_path: Path, saida: Path, anon=None) -> Path:
+TEXTOS_LIVRES = ("texto_ementa", "info_geral")
+
+
+def ingerir_julgamentos(zip_path: Path, saida: Path, anon=None, com_texto: bool = False) -> Path:
+    """Por minimização, os textos livres (ementa, decisão) NÃO são guardados por padrão: a ementa do
+    acórdão já vem do índice e nada aqui depende delas. Com `com_texto`, passam pelo anonimizador."""
     df = _ler_csv(zip_path)
     df["data_sessao"] = pd.to_datetime(df["data_sessao"], errors="coerce").dt.date
     df["ano"] = pd.to_datetime(df["data_sessao"], errors="coerce").dt.year.astype("Int32")
     df["desfecho"] = df["resultado_julgamento"].map(desfecho)
     df["tipo_recurso"] = df["resultado_julgamento"].map(tipo_recurso)
-    if anon is not None:
-        for col in ("texto_ementa", "info_geral"):
+    if not com_texto:
+        df = df.drop(columns=[c for c in TEXTOS_LIVRES if c in df])
+    elif anon is not None:
+        for col in TEXTOS_LIVRES:
             df[col] = [anon.anonymize(v)[0] if isinstance(v, str) else v for v in df[col]]
     saida.mkdir(parents=True, exist_ok=True)
     anos = df["ano"].dropna().unique()
@@ -168,7 +189,38 @@ def ingerir_estoque(zip_path: Path, saida: Path) -> Path:
     return alvo
 
 
-def atualizar(data_dir: Path, anon=None, session=None, incluir_candidatos=True, log=print) -> dict:
+def _ingerir_job(args):
+    """Roda em processo próprio (carga paralela): cada processo cria seu anonimizador."""
+    zip_path, conjunto, pasta, sem_ner, manter_cnpj, anonimizar, com_texto = args
+    if conjunto == "estoque":
+        return ingerir_estoque(Path(zip_path), Path(pasta)).name
+    anon = None
+    if anonimizar and com_texto:
+        from . import anonimizador
+
+        anon = anonimizador.criar(sem_ner, manter_cnpj)
+    return ingerir_julgamentos(Path(zip_path), Path(pasta), anon, com_texto).name
+
+
+def _ingerir_lote(jobs, workers, anon, sem_ner, manter_cnpj, log, com_texto=False):
+    """jobs: [(zip, conjunto, pasta)]. Em paralelo quando workers > 1 (o NER é o gargalo)."""
+    if workers > 1 and len(jobs) > 1:
+        from concurrent.futures import ProcessPoolExecutor
+        from multiprocessing import get_context
+
+        args = [(str(z), c, str(p), sem_ner, manter_cnpj, anon is not None, com_texto) for z, c, p in jobs]
+        with ProcessPoolExecutor(max_workers=workers, mp_context=get_context("spawn")) as ex:
+            for (z, _, _), nome in zip(jobs, ex.map(_ingerir_job, args), strict=True):
+                log(f"{Path(z).name} -> {nome}")
+        return
+    for z, c, p in jobs:
+        alvo = ingerir_julgamentos(z, p, anon, com_texto) if c == "julgamentos" else ingerir_estoque(z, p)
+        log(f"{Path(z).name} -> {alvo.name}")
+
+
+def atualizar(data_dir: Path, anon=None, session=None, incluir_candidatos=True, log=print,
+              workers: int = 1, sem_ner: bool = False, manter_cnpj: bool = False,
+              com_texto: bool = False) -> dict:
     """Baixa o que mudou e reingere. Estado em data/gerenciais/estado.json."""
     raiz = data_dir / "gerenciais"
     est_path = raiz / "estado.json"
@@ -177,37 +229,32 @@ def atualizar(data_dir: Path, anon=None, session=None, incluir_candidatos=True, 
     if incluir_candidatos:
         recursos += candidatos_novos(recursos)
     resumo: dict = {"novos": [], "alterados": [], "inalterados": 0, "inacessiveis": [], "ausentes": 0}
+    jobs = []
     for rec in recursos:
         r = baixar(rec, raiz / "raw", estado, session)
         st = r["status"]
         if st in ("novo", "alterado"):
-            ingestor = ingerir_julgamentos if rec.conjunto == "julgamentos" else ingerir_estoque
-            pasta = raiz / rec.conjunto
-            alvo = (
-                ingestor(r["arquivo"], pasta, anon)
-                if rec.conjunto == "julgamentos"
-                else ingestor(r["arquivo"], pasta)
-            )
+            jobs.append((r["arquivo"], rec.conjunto, raiz / rec.conjunto))
             resumo["novos" if st == "novo" else "alterados"].append(rec.arquivo)
-            log(f"[{rec.conjunto}] {rec.arquivo} -> {alvo.name}")
         elif st == "inalterado":
             resumo["inalterados"] += 1
         elif st == "inacessivel":
             resumo["inacessiveis"].append(rec.arquivo)
         else:
             resumo["ausentes"] += 1
-    raiz.mkdir(parents=True, exist_ok=True)
-    est_path.write_text(json.dumps(estado, indent=1, ensure_ascii=False))
+        raiz.mkdir(parents=True, exist_ok=True)
+        est_path.write_text(json.dumps(estado, indent=1, ensure_ascii=False))  # progresso salvo
+    _ingerir_lote(jobs, workers, anon, sem_ner, manter_cnpj, log, com_texto)
     return resumo
 
 
-def reingerir(data_dir: Path, anon=None, log=print) -> list[str]:
+def reingerir(data_dir: Path, anon=None, log=print, com_texto: bool = False) -> list[str]:
     """Reprocessa os ZIPs já baixados (sem rede), por exemplo após melhorar a anonimização."""
     raiz = data_dir / "gerenciais"
     feitos = []
     for z in sorted((raiz / "raw").glob("*.zip")):
         if z.name.startswith("carf_julgamentos_"):
-            alvo = ingerir_julgamentos(z, raiz / "julgamentos", anon)
+            alvo = ingerir_julgamentos(z, raiz / "julgamentos", anon, com_texto)
         elif "estoque" in z.name.lower():
             alvo = ingerir_estoque(z, raiz / "estoque")
         else:

@@ -15,6 +15,7 @@ MODELOS = {
     "spacy": ("pt_core_news_lg", "", ""),
 }
 MAX_CARACTERES = 1500
+MAX_CARACTERES_ONNX = 800  # modelos transformer: custo cresce com o tamanho; o resto é boilerplate
 
 
 def _normalizar(m: np.ndarray) -> np.ndarray:
@@ -74,7 +75,7 @@ class FastEmbedModelo(Embedder):
 
     def codificar(self, textos, consulta=False):
         pre = self.pq if consulta else self.pp
-        v = np.array(list(self.modelo.embed([pre + t[:MAX_CARACTERES] for t in textos], batch_size=32)),
+        v = np.array(list(self.modelo.embed([pre + t[:MAX_CARACTERES_ONNX] for t in textos], batch_size=32)),
                      dtype=np.float32)
         return _normalizar(v)
 
@@ -142,7 +143,7 @@ def indexar(con, indice: Indice, embedder: Embedder, lote=256, limite=None, log=
     if limite:
         pend = pend[:limite]
     for ini in range(0, len(pend), lote):
-        parte = pend[ini : ini + lote]
+        parte = sorted(pend[ini : ini + lote], key=lambda x: len(x[1]))  # menos preenchimento
         indice.gravar([i for i, _ in parte], embedder.codificar([e for _, e in parte]))
         log(f"[embed] {min(ini + lote, len(pend))}/{len(pend)}")
     return len(pend)

@@ -58,8 +58,18 @@ def test_nulos():
     assert g.desfecho(None) is None and g.tipo_recurso("") is None
 
 
+def test_ingere_julgamentos_nao_guarda_texto_livre_por_padrao(tmp_path):
+    import pandas as pd
+
+    out = g.ingerir_julgamentos(zip_de(tmp_path, "carf_julgamentos_2025.zip", JULG), tmp_path / "p", Anonymizer())
+    df = pd.read_parquet(out)
+    assert "texto_ementa" not in df and "info_geral" not in df and len(df) == 4
+    assert df["desfecho"].tolist()[:2] == ["NEGADO", "PROVIDO_PARCIAL"]
+
+
 def test_ingere_julgamentos_anonimiza_ementa(tmp_path):
-    out = g.ingerir_julgamentos(zip_de(tmp_path, "carf_julgamentos_2025.zip", JULG), tmp_path / "j", Anonymizer())
+    out = g.ingerir_julgamentos(zip_de(tmp_path, "carf_julgamentos_2025.zip", JULG), tmp_path / "j", Anonymizer(),
+                                com_texto=True)
     assert out.name == "julgamentos_2025.parquet"
     import pandas as pd
 
@@ -153,12 +163,12 @@ def test_reingerir_aplica_anonimizador_sem_rede(tmp_path):
     (raiz / "raw").mkdir(parents=True)
     zip_de(raiz / "raw", "carf_julgamentos_2025.zip", JULG)
     # primeira passada SEM anonimizar; depois reingere com anonimizador
-    g.reingerir(tmp_path, None, log=lambda m: None)
+    g.reingerir(tmp_path, None, log=lambda m: None, com_texto=True)
     import pandas as pd
 
     p = raiz / "julgamentos" / "julgamentos_2025.parquet"
     assert "529.982.247-25" in pd.read_parquet(p)["texto_ementa"][0]
-    assert g.reingerir(tmp_path, Anonymizer(), log=lambda m: None) == ["carf_julgamentos_2025.zip"]
+    assert g.reingerir(tmp_path, Anonymizer(), log=lambda m: None, com_texto=True) == ["carf_julgamentos_2025.zip"]
     assert "529.982.247-25" not in pd.read_parquet(p)["texto_ementa"][0]
 
 
@@ -170,3 +180,29 @@ def test_registros_sem_a_dimensao_nao_somem(tmp_path):
     con = qg.conectar(tmp_path)
     t = qg.desfecho_por(con, "tributo").set_index("tributo")
     assert "(não informado)" in t.index and int(t["total"].sum()) == 3  # os 3 acórdãos com desfecho
+
+
+def test_baixar_prefere_wwwgov_e_cai_para_o_host_antigo(tmp_path):
+    antigo = "https://carf.economia.gov.br/dados-abertos/dispe/carf_julgamentos_2024.zip/@@download/file/CARF_Julgamentos_2024.zip"
+    rec = g.Recurso("julgamentos", "x", "CSV", antigo)
+    novo = g.BASE + "carf_julgamentos_2024.zip"
+    assert g.urls_candidatas(rec) == [novo, antigo]
+    # 1) novo responde: o antigo nem é consultado
+    s = SessaoFalsa({novo: RespostaFalsa(200, b"a"), antigo: RespostaFalsa(200, b"b")})
+    assert g.baixar(rec, tmp_path / "1", {}, s)["status"] == "novo" and [c[0] for c in s.chamadas] == [novo]
+    # 2) novo dá 404: cai para o antigo
+    s = SessaoFalsa({novo: RespostaFalsa(404), antigo: RespostaFalsa(200, b"b")})
+    assert g.baixar(rec, tmp_path / "2", {}, s)["status"] == "novo" and len(s.chamadas) == 2
+    # 3) novo bloqueado e antigo bloqueado: inacessível, sem exceção
+    s = SessaoFalsa({novo: requests.ConnectionError("x"), antigo: requests.ConnectionError("y")})
+    assert g.baixar(rec, tmp_path / "3", {}, s)["status"] == "inacessivel"
+    # 4) ambos 404: inexistente
+    s = SessaoFalsa({novo: RespostaFalsa(404), antigo: RespostaFalsa(404)})
+    assert g.baixar(rec, tmp_path / "4", {}, s)["status"] == "inexistente"
+
+
+def test_ingestao_paralela_de_varios_arquivos(tmp_path):
+    zips = [zip_de(tmp_path, f"est{i}.zip", EST) for i in range(3)]
+    jobs = [(z, "estoque", tmp_path / "out") for z in zips]
+    g._ingerir_lote(jobs, workers=2, anon=None, sem_ner=True, manter_cnpj=False, log=lambda m: None)
+    assert sorted(p.name for p in (tmp_path / "out").glob("*.parquet")) == ["est0.parquet", "est1.parquet", "est2.parquet"]

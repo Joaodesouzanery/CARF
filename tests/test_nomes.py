@@ -117,3 +117,25 @@ def test_nome_seguido_de_funcao_publica_e_oficial():
     assert sp.label == "OFICIAL" and t[sp.start : sp.end] == "Pedro Sousa Bispo"
     t2 = "INTERESSE COMUM NA SITUAÇÃO QUE CONSTITUA"
     assert refinar(t2, Span(0, len(t2), "NOME")) is None
+
+
+def test_contexto_pega_caixa_alta_e_listas():
+    d = NomesPorContexto()
+
+    def nomes(t):
+        return [t[x.start : x.end] for x in d.detectar(t)]
+
+    t = "RESPONSABILIDADE SOLIDÁRIA. Srs. GLEDERSON TONI LOPES NABHAN e JEFERSON TONI LOPES NABHAN. São solidariamente"
+    assert nomes(t) == ["GLEDERSON TONI LOPES NABHAN", "JEFERSON TONI LOPES NABHAN"]
+    assert nomes("os sócios Maria Souza, João Lima e Pedro Costa Neto foram intimados") == [
+        "Maria Souza", "João Lima", "Pedro Costa Neto"]
+    assert nomes("Recorrente: Carlos Alberto de Souza apresentou recurso.") == ["Carlos Alberto de Souza"]
+    assert nomes("o contribuinte e a Fazenda Nacional discordam") == []  # sem nome logo após o termo
+
+
+def test_nome_em_caixa_alta_apos_sr_e_mascarado_no_pipeline():
+    from carf.privacy.ner import NomesPorContexto
+
+    anon = Anonymizer(nomes=NomesPorContexto())
+    out, _ = anon.anonymize("IMPUTAÇÃO DEVIDA. Srs. GLEDERSON TONI LOPES NABHAN e JEFERSON TONI LOPES NABHAN. Fim.")
+    assert out == "IMPUTAÇÃO DEVIDA. Srs. [NOME] e [NOME]. Fim."

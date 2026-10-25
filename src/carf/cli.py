@@ -130,13 +130,17 @@ def cmd_compact(args):
 def cmd_gerenciais(args):
     from .qa import gerenciais as qg
 
+    anon = None
+    if args.acao in ("atualizar", "reingerir") and args.com_ementa and not args.sem_anonimizar:
+        anon = _anonimizador(args)
     if args.acao == "reingerir":
-        anon = None if args.sem_anonimizar else _anonimizador(args)
-        print(json.dumps(gerenciais.reingerir(config.DATA_DIR, anon), ensure_ascii=False, indent=2))
+        print(json.dumps(gerenciais.reingerir(config.DATA_DIR, anon, com_texto=args.com_ementa),
+                         ensure_ascii=False, indent=2))
         return
     if args.acao == "atualizar":
-        anon = None if args.sem_anonimizar else _anonimizador(args)
-        print(json.dumps(gerenciais.atualizar(config.DATA_DIR, anon), ensure_ascii=False, indent=2))
+        print(json.dumps(gerenciais.atualizar(config.DATA_DIR, anon, workers=args.workers, sem_ner=args.sem_ner,
+                                              manter_cnpj=args.manter_cnpj, com_texto=args.com_ementa),
+                         ensure_ascii=False, indent=2))
         return
     con = qg.conectar()
     if args.acao == "desfechos":
@@ -194,8 +198,11 @@ def main(argv=None):
     g = sub.add_parser("gerenciais", help="dados abertos oficiais: Julgamentos e Estoque")
     g.add_argument("acao", choices=["atualizar", "reingerir", "desfechos", "estoque"])
     g.add_argument("por", nargs="?", default="tributo")
+    g.add_argument("--workers", type=int, default=1, help="processos para anonimizar anos em paralelo")
     g.add_argument("--sem-ner", action="store_true")
     g.add_argument("--manter-cnpj", action="store_true")
+    g.add_argument("--com-ementa", action="store_true",
+                   help="guarda também ementa/decisão do CSV (anonimizadas); por padrão não guarda")
     g.add_argument("--sem-anonimizar", action="store_true", help="não passa a ementa pelo anonimizador")
     g.set_defaults(fn=cmd_gerenciais)
 

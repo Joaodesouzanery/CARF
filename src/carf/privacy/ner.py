@@ -184,17 +184,27 @@ class SpacyNomes:
 
 
 class NomesPorContexto:
-    """Reserva degradada, sem modelo: só nomes que seguem um termo de contexto.
+    """Nomes que seguem um termo de contexto ("Sr.", "sócios", "responsável solidário"...).
 
-    Recall muito inferior ao NER; exige confirmação explícita para uso.
+    Pega o que o NER perde, sobretudo nomes em CAIXA ALTA e listas ligadas por "e" ou vírgula
+    ("Srs. FULANO DE TAL e BELTRANO DE TAL"). Sozinha tem recall muito inferior ao NER.
     """
 
-    _RX = re.compile(
-        r"(?i:contribuinte|recorrente|requerente|interessad[oa]|s[óo]cio|"
-        r"respons[áa]vel solid[áa]rio|Sr\.|Sra\.|senhor|senhora)\s*:?\s*"
-        r"((?:[A-ZÁÉÍÓÚÂÊÔÃÕÇ][\wáéíóúâêôãõç]+(?:\s+(?:d[aeo]s?|e))?\s+){1,4}"
-        r"[A-ZÁÉÍÓÚÂÊÔÃÕÇ][\wáéíóúâêôãõç]+)"
+    _CAP = r"[A-ZÁÉÍÓÚÂÊÔÃÕÇ][\wáéíóúâêôãõç'\-]+"
+    _NOME = rf"{_CAP}(?:\s+(?:d[aeo]s?\s+)?{_CAP}){{1,5}}"
+    _CUES = (
+        r"contribuintes?|recorrentes?|requerentes?|interessad[oa]s?|s[óo]cios?|s[óo]cias?|"
+        r"respons[áa]ve(?:l|is)\s+solid[áa]ri[oa]s?|autuad[oa]s?|advogad[oa]s?|"
+        r"Srs?\.?|Sras?\.?|senhor(?:es|a|as)?|patronos?|representantes?\s+legais?|"
+        r"administrador(?:es|a|as)?|diretor(?:es|a|as)?|herdeiros?|espólio\s+de"
     )
+    _RX = re.compile(rf"(?i:{_CUES})\s*:?\s*({_NOME}(?:\s*(?:,|\be\b)\s*{_NOME})*)")
+    _UM = re.compile(_NOME)
 
     def detectar(self, text: str) -> list[Span]:
-        return [Span(*m.span(1), "NOME") for m in self._RX.finditer(text)]
+        spans = []
+        for m in self._RX.finditer(text):
+            base = m.start(1)
+            spans += [Span(base + n.start(), base + n.end(), "NOME")
+                      for n in self._UM.finditer(m.group(1))]
+        return spans
