@@ -1,0 +1,533 @@
+<title>Jurisprudência CARF</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,500;8..60,600&display=swap">
+<style>
+/* Layout: cabeçalho fixo com abas; coluna de filtros à esquerda e lista de acórdãos à direita; abas de análise em coluna única. */
+:root {
+  --bg: #f2f5f4; --panel: #ffffff; --ink: #14201f; --muted: #5a6b69; --line: #d6dfdd;
+  --accent: #0e5a58; --accent-ink: #ffffff; --accent-soft: #dcecea;
+  --ok: #1d7a46; --ok-soft: #dff1e6; --bad: #a3361f; --bad-soft: #f6e1db; --warn: #8a5a00; --warn-soft: #f7ebcf;
+  --c1: #0e5a58; --c2: #b4452c; --c3: #6b7b8c;
+  --serif: "Source Serif 4", Georgia, serif; --sans: "IBM Plex Sans", system-ui, sans-serif; --mono: "IBM Plex Mono", ui-monospace, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0f1716; --panel: #172221; --ink: #e4ecea; --muted: #92a5a2; --line: #2a3a38;
+  --accent: #5fc4bd; --accent-ink: #0b1514; --accent-soft: #1d3634;
+  --ok: #67c58e; --ok-soft: #1a3326; --bad: #ee8a73; --bad-soft: #3a211b; --warn: #e3b457; --warn-soft: #3a2f14;
+  --c1: #5fc4bd; --c2: #ee8a73; --c3: #9fb0c2; color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #0f1716; --panel: #172221; --ink: #e4ecea; --muted: #92a5a2; --line: #2a3a38;
+  --accent: #5fc4bd; --accent-ink: #0b1514; --accent-soft: #1d3634;
+  --ok: #67c58e; --ok-soft: #1a3326; --bad: #ee8a73; --bad-soft: #3a211b; --warn: #e3b457; --warn-soft: #3a2f14;
+  --c1: #5fc4bd; --c2: #ee8a73; --c3: #9fb0c2; color-scheme: dark; }
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--sans); font-size: 15px; line-height: 1.5;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 0 48px; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
+.wrap { max-width: 1180px; margin: 0 auto; }
+header { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg); padding-block: 14px 0; border-bottom: 1px solid var(--line); }
+.brand { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.brand h1 { font: 600 22px/1.2 var(--serif); margin: 0; letter-spacing: -0.01em; }
+.brand span { color: var(--muted); font-size: 13px; }
+nav { display: flex; gap: 2px; overflow-x: auto; margin-top: 10px; }
+nav button { appearance: none; background: none; border: 0; border-bottom: 3px solid transparent; padding: 9px 14px; font: 500 14px var(--sans);
+  color: var(--muted); cursor: pointer; white-space: nowrap; }
+nav button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); }
+nav button:focus-visible, button:focus-visible, select:focus-visible, input:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+main { padding-top: 22px; }
+section[hidden] { display: none; }
+h2 { font: 600 20px/1.25 var(--serif); margin: 0 0 4px; text-wrap: balance; }
+.lead { color: var(--muted); margin: 0 0 18px; max-width: 70ch; }
+.grid { display: grid; grid-template-columns: 270px minmax(0, 1fr); gap: 24px; align-items: start; }
+@media (max-width: 800px) { .grid { grid-template-columns: minmax(0, 1fr); } }
+.filters { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 16px; display: grid; gap: 14px; }
+label, .lab { font: 500 12px var(--sans); text-transform: uppercase; letter-spacing: .06em; color: var(--muted); display: block; margin-bottom: 5px; }
+input[type=search], select { width: 100%; font: 15px var(--sans); color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 9px 10px; }
+.q { font-size: 17px !important; padding: 12px 14px !important; background: var(--panel) !important; }
+.years { display: flex; flex-wrap: wrap; gap: 6px; }
+.years label { text-transform: none; letter-spacing: 0; font: 500 13px var(--mono); color: var(--ink); margin: 0; display: flex; gap: 5px; align-items: center;
+  border: 1px solid var(--line); border-radius: 6px; padding: 4px 8px; cursor: pointer; background: var(--bg); }
+.years input:checked + span { color: var(--accent); font-weight: 600; }
+.hint { color: var(--muted); font-size: 13px; }
+.bar { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; margin: 12px 0 10px; }
+.bar b { font-family: var(--mono); font-weight: 500; }
+button.b { appearance: none; border: 1px solid var(--line); background: var(--panel); color: var(--ink); border-radius: 6px; padding: 8px 12px; font: 500 13px var(--sans); cursor: pointer; }
+button.b.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; margin-bottom: 10px; }
+.card .cit { font: 500 13px var(--mono); color: var(--ink); overflow-wrap: anywhere; }
+.card .meta { color: var(--muted); font-size: 13px; margin: 2px 0 8px; }
+.card p { margin: 8px 0 0; max-width: 78ch; overflow-wrap: anywhere; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.chip { font: 500 12px var(--sans); border-radius: 999px; padding: 2px 9px; background: var(--accent-soft); color: var(--accent); }
+.chip.ok { background: var(--ok-soft); color: var(--ok); } .chip.bad { background: var(--bad-soft); color: var(--bad); }
+.chip.warn { background: var(--warn-soft); color: var(--warn); } .chip.nt { background: var(--bg); color: var(--muted); border: 1px solid var(--line); }
+a { color: var(--accent); }
+.prontas { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+.prontas button { text-align: left; }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 18px; margin-bottom: 18px; }
+.row2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 18px; }
+@media (max-width: 800px) { .row2 { grid-template-columns: minmax(0, 1fr); } }
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th, td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--line); }
+th { font: 500 12px var(--sans); text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+td.n, th.n { text-align: right; font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.scroll { overflow-x: auto; }
+svg text { font-family: var(--sans); fill: var(--muted); font-size: 11px; }
+svg .lbl { fill: var(--ink); font-weight: 600; }
+.legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 13px; color: var(--muted); margin-bottom: 6px; }
+.legend i { display: inline-block; width: 12px; height: 3px; margin-right: 6px; vertical-align: middle; border-radius: 2px; }
+.hbar { display: grid; grid-template-columns: minmax(120px, 34%) minmax(0, 1fr) 70px; gap: 10px; align-items: center; font-size: 14px; margin-bottom: 6px; }
+.hbar .t { height: 14px; background: var(--accent); border-radius: 3px; }
+.hbar .v { font-family: var(--mono); font-size: 13px; text-align: right; }
+.hbar .nm { overflow-wrap: anywhere; }
+.kpis { display: flex; gap: 28px; flex-wrap: wrap; margin-bottom: 14px; }
+.kpis b { display: block; font: 600 26px var(--serif); font-variant-numeric: tabular-nums; }
+.kpis span { color: var(--muted); font-size: 13px; }
+.rev { border-top: 1px solid var(--line); padding: 14px 0; }
+.rev h3 { font: 500 13px var(--mono); margin: 0 0 6px; overflow-wrap: anywhere; }
+.rev blockquote { margin: 6px 0; padding: 8px 12px; border-left: 3px solid var(--line); color: var(--muted); font-size: 13px; overflow-wrap: anywhere; }
+.rev .checks { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 8px; }
+.rev .checks label { text-transform: none; letter-spacing: 0; font: 14px var(--sans); color: var(--ink); display: flex; gap: 6px; align-items: center; margin: 0; }
+.rev.feito { opacity: .75; }
+.note { font-size: 13px; color: var(--muted); border-left: 3px solid var(--warn); padding: 6px 12px; background: var(--warn-soft); border-radius: 0 6px 6px 0; max-width: 78ch; }
+.empty { color: var(--muted); padding: 28px 8px; text-align: center; }
+@media (prefers-reduced-motion: no-preference) { .card { transition: border-color .15s; } .card:hover { border-color: var(--accent); } }
+</style>
+
+<div class="wrap">
+<header>
+  <div class="brand"><h1>Jurisprudência CARF</h1><span id="sub">carregando…</span></div>
+  <nav role="tablist" id="tabs">
+    <button role="tab" aria-selected="true" data-t="pesquisa">Pesquisa</button>
+    <button role="tab" aria-selected="false" data-t="tendencias">Tendências</button>
+    <button role="tab" aria-selected="false" data-t="estoque">Estoque</button>
+    <button role="tab" aria-selected="false" data-t="boletim">Boletim</button>
+    <button role="tab" aria-selected="false" data-t="revisao">Revisão LGPD</button>
+  </nav>
+</header>
+<main>
+
+<section id="pesquisa">
+  <h2>Pesquisa de jurisprudência</h2>
+  <p class="lead">Digite o tema e combine com os filtros de matéria e de tese. Exemplo: nulidade acolhida em classificação de mercadorias.</p>
+  <div id="prontas" class="prontas"></div>
+  <div class="grid">
+    <aside class="filters">
+      <div><label for="q">Palavras</label><input id="q" class="q" type="search" placeholder="ex.: cerceamento de defesa" autocomplete="off"></div>
+      <div><span class="lab">Anos</span><div class="years" id="anos"></div><div class="hint" id="anosHint"></div></div>
+      <div id="srv" hidden>
+        <label style="display:flex;gap:8px;align-items:center;text-transform:none;letter-spacing:0;font-size:14px;color:var(--ink)"><input type="checkbox" id="sem"> Buscar por significado (servidor)</label>
+        <input id="tok" type="search" placeholder="Token do escritório" autocomplete="off" style="margin-top:8px" hidden>
+      </div>
+      <div><label for="assunto">Matéria (assunto da ementa)</label><select id="assunto"></select></div>
+      <div><label for="nul">Nulidade</label><select id="nul"><option value="0">Qualquer</option><option value="1">Acolhida</option><option value="2">Rejeitada</option></select></div>
+      <div><label for="pre">Prescrição</label><select id="pre"><option value="0">Qualquer</option><option value="1">Acolhida</option><option value="2">Rejeitada</option></select></div>
+      <div><label for="res">Resultado (leitura automática)</label><select id="res"><option value="">Qualquer</option><option value="PROVIDO">Provido</option><option value="PROVIDO_PARCIAL">Provido em parte</option><option value="NEGADO">Negado</option><option value="NAO_CONHECIDO">Não conhecido</option></select></div>
+      <div><label for="turma">Colegiado</label><select id="turma"></select></div>
+      <button class="b" id="limpar" type="button">Limpar filtros</button>
+    </aside>
+    <div>
+      <div class="bar"><div id="cont" aria-live="polite"></div><button class="b" id="copiar" type="button">Copiar citações</button></div>
+      <div id="lista"></div>
+      <div style="text-align:center"><button class="b" id="mais" type="button" hidden>Mostrar mais</button></div>
+      <p class="note" style="margin-top:14px">A tese e o resultado são leituras automáticas do texto da decisão. Conferem na amostra medida, mas podem errar, e a abstenção aparece como “indefinida”. Este painel busca por palavras no início da ementa. A busca por significado, sobre a ementa inteira e o voto, roda no servidor.</p>
+    </div>
+  </div>
+</section>
+
+<section id="tendencias" hidden>
+  <h2>Como o CARF decide, por tributo</h2>
+  <p class="lead">Resultado dos recursos julgados, a partir do dado aberto oficial de Julgamentos (acórdãos). Não é leitura automática.</p>
+  <div class="panel">
+    <div style="max-width:360px;margin-bottom:12px"><label for="trib">Tributo</label><select id="trib"></select></div>
+    <div class="legend"><span><i style="background:var(--c1)"></i>Provido (total ou parcial)</span><span><i style="background:var(--c2)"></i>Negado</span><span><i style="background:var(--c3)"></i>Não conhecido</span></div>
+    <div class="scroll"><div id="chart"></div></div>
+    <div class="scroll"><table id="ttab"></table></div>
+  </div>
+</section>
+
+<section id="estoque" hidden>
+  <h2>Acervo pendente no CARF</h2>
+  <p class="lead" id="estLead"></p>
+  <div class="panel">
+    <div style="max-width:360px;margin-bottom:12px"><label for="etrib">Tributo</label><select id="etrib"></select></div>
+    <div class="kpis" id="ekpi"></div>
+    <div id="ebars"></div>
+  </div>
+</section>
+
+<section id="boletim" hidden>
+  <h2>Boletim por tributo</h2>
+  <p class="lead">Resumo para o cliente: tendência oficial de provimento e as decisões mais recentes do tema.</p>
+  <div class="panel" id="bol"></div>
+</section>
+
+<section id="revisao" hidden>
+  <h2>Revisão da anonimização</h2>
+  <p class="lead">Para cada acórdão, leia o trecho e marque o que sobrou ou o que foi mascarado sem necessidade. O resultado calcula a taxa de vazamento com intervalo de confiança. Suas marcações ficam neste navegador.</p>
+  <div class="panel">
+    <div class="kpis" id="rkpi"></div>
+    <button class="b primary" id="rcopy" type="button">Copiar resultado (CSV)</button>
+    <span class="hint" id="rmsg" style="margin-left:10px"></span>
+  </div>
+  <div id="rlist"></div>
+</section>
+
+</main>
+</div>
+
+<script>
+"use strict";
+const $ = (s) => document.querySelector(s);
+const el = (t, c, h) => { const e = document.createElement(t); if (c) e.className = c; if (h != null) e.textContent = h; return e; };
+const fold = (s) => (s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+const fmt = (n) => n.toLocaleString("pt-BR");
+const store = { get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} } };
+const STOP = new Set("de da do das dos e a o as os em no na nos nas para por com que ao aos se um uma ou como mais sua seu sao foi ser nao".split(" "));
+const RES = { PROVIDO: ["Provido", "ok"], PROVIDO_PARCIAL: ["Provido em parte", "ok"], NEGADO: ["Negado", "bad"], NAO_CONHECIDO: ["Não conhecido", "warn"], ACOLHIDO: ["Embargos acolhidos", "ok"], REJEITADO: ["Embargos rejeitados", "bad"], MISTO: ["Misto", "nt"], OUTRO: ["Outro", "nt"] };
+
+let META = null, OFICIAL = null, REVISAO = [], PRONTAS = [];
+const anos = {};            // ano -> {rows, idx}
+const sel = new Set();      // anos marcados
+let acha = [], mostrando = 0;
+
+/* ---------- carga ---------- */
+async function getJson(p) { const r = await fetch(p); if (!r.ok) throw new Error(p + " " + r.status); return r.json(); }
+
+function indexar(rows) {
+  const idx = new Map();
+  rows.forEach((r, i) => {
+    const toks = new Set(fold(r[9] + " " + META.assuntos[r[5]]).split(/[^a-z0-9]+/).filter((t) => t.length > 1 && !STOP.has(t)));
+    toks.forEach((t) => { let a = idx.get(t); if (!a) idx.set(t, (a = [])); a.push(i); });
+  });
+  return { idx, keys: [...idx.keys()].sort() };
+}
+
+async function carregarAno(a) {
+  if (anos[a]) return;
+  const d = await getJson(`dados/ano-${a}.json`);
+  anos[a] = { rows: d.rows, ...indexar(d.rows) };
+}
+
+function candidatos(ano, tok) {
+  const { idx, keys } = anos[ano];
+  if (tok.length < 4) return idx.get(tok) || [];
+  let lo = 0, hi = keys.length;
+  while (lo < hi) { const m = (lo + hi) >> 1; if (keys[m] < tok) lo = m + 1; else hi = m; }
+  const out = new Set();
+  for (let i = lo; i < keys.length && keys[i].startsWith(tok); i++) idx.get(keys[i]).forEach((x) => out.add(x));
+  return [...out];
+}
+
+/* ---------- pesquisa ---------- */
+const NOMES_TESE = { 1: "acolhida", 2: "rejeitada" };
+async function buscarServidor() {
+  const tok = $("#tok").value.trim(); store.set("carf-token", tok);
+  const f = {};
+  if ($("#assunto").value !== "") f.assunto = META.assuntos[+$("#assunto").value];
+  if ($("#turma").value !== "") f.turma = META.turmas[+$("#turma").value];
+  if ($("#nul").value !== "0") f.tese_nulidade = NOMES_TESE[$("#nul").value];
+  if ($("#pre").value !== "0") f.tese_prescricao = NOMES_TESE[$("#pre").value];
+  const lista = $("#lista"); lista.replaceChildren(el("div", "empty", "Buscando…"));
+  try {
+    const r = await fetch("api/buscar", { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + tok }, body: JSON.stringify({ q: $("#q").value, filtros: f, limite: 30 }) });
+    if (r.status === 401) { lista.replaceChildren(el("div", "empty", "Token inválido. Confira com quem administra o painel.")); return; }
+    if (r.status === 429) { lista.replaceChildren(el("div", "empty", "Muitas consultas seguidas. Aguarde um minuto.")); return; }
+    const d = await r.json();
+    lista.replaceChildren();
+    $("#cont").replaceChildren(el("b", "", String(d.resultados.length)), document.createTextNode(` acórdãos por ${d.modo === "lexico" ? "palavras" : "significado"}`));
+    $("#mais").hidden = true; acha = [];
+    d.resultados.forEach((x) => lista.appendChild(cardApi(x)));
+    if (!d.resultados.length) lista.appendChild(el("div", "empty", "Nenhum acórdão com esses filtros."));
+  } catch (e) { lista.replaceChildren(el("div", "empty", "Não foi possível consultar o servidor.")); }
+}
+
+function cardApi(x) {
+  const c = el("div", "card");
+  c.appendChild(el("div", "cit", x.citacao || x.id));
+  const chips = el("div", "chips");
+  if (x.assunto) chips.appendChild(el("span", "chip", x.assunto));
+  if (x.tese_nulidade) chips.appendChild(el("span", "chip " + (x.tese_nulidade === "ACOLHIDA" ? "ok" : x.tese_nulidade === "REJEITADA" ? "bad" : "nt"), "Nulidade " + x.tese_nulidade.toLowerCase()));
+  if (x.tese_prescricao) chips.appendChild(el("span", "chip " + (x.tese_prescricao === "ACOLHIDA" ? "ok" : x.tese_prescricao === "REJEITADA" ? "bad" : "nt"), "Prescrição " + x.tese_prescricao.toLowerCase()));
+  const rs = RES[x.resultado]; if (rs) chips.appendChild(el("span", "chip " + rs[1], rs[0]));
+  if (x.iguais > 1) chips.appendChild(el("span", "chip nt", `+${x.iguais - 1} com a mesma ementa`));
+  c.appendChild(chips);
+  c.appendChild(el("p", "", (x.ementa || "").replace(/\s+/g, " ").slice(0, 600)));
+  c.appendChild(el("p", "hint", "Decisão: " + (x.decisao || "")));
+  if (x.pdf) { const p = el("p"); const a = el("a", "", "Abrir o acórdão (PDF oficial)"); a.href = x.pdf; a.target = "_blank"; a.rel = "noopener"; p.appendChild(a); c.appendChild(p); }
+  return c;
+}
+
+function filtrar() {
+  if ($("#sem") && $("#sem").checked) { buscarServidor(); return; }
+  const f = { nul: +$("#nul").value, pre: +$("#pre").value, res: $("#res").value, turma: $("#turma").value, assunto: $("#assunto").value };
+  const toks = fold($("#q").value).split(/[^a-z0-9]+/).filter((t) => t.length > 1 && !STOP.has(t));
+  const out = [];
+  for (const a of [...sel].sort().reverse()) {
+    const A = anos[a]; if (!A) continue;
+    let ids;
+    if (toks.length) {
+      ids = null;
+      for (const t of toks) {
+        const c = new Set(candidatos(a, t));
+        ids = ids ? new Set([...ids].filter((x) => c.has(x))) : c;
+        if (!ids.size) break;
+      }
+    } else ids = A.rows.keys();
+    for (const i of ids) {
+      const r = A.rows[i];
+      if (f.nul && r[6] !== f.nul) continue;
+      if (f.pre && r[7] !== f.pre) continue;
+      if (f.res && r[8] !== f.res) continue;
+      if (f.turma !== "" && String(r[3]) !== f.turma) continue;
+      if (f.assunto !== "" && String(r[5]) !== f.assunto) continue;
+      let s = 0;
+      if (toks.length) { const e = fold(r[9].slice(0, 90)); toks.forEach((t) => { if (e.includes(t)) s += 2; }); }
+      out.push([s, r[4] || "", r]);
+    }
+  }
+  out.sort((x, y) => y[0] - x[0] || (x[1] < y[1] ? 1 : -1));
+  acha = out.map((x) => x[2]);
+  mostrando = 0;
+  $("#lista").replaceChildren();
+  $("#cont").replaceChildren(el("b", "", fmt(acha.length)), document.createTextNode(acha.length === 1 ? " acórdão" : " acórdãos"));
+  mais();
+}
+
+function citacao(r) {
+  const d = r[4] ? r[4].split("-").reverse().join("/") : "s/d";
+  return `Acórdão ${r[1] || "s/n"}, Processo ${r[2] || "s/n"}, ${META.turmas[r[3]] || "s/colegiado"}, sessão ${d} [id ${r[0]}]`;
+}
+
+function card(r) {
+  const c = el("div", "card");
+  c.appendChild(el("div", "cit", `Acórdão ${r[1] || "s/n"} · Processo ${r[2] || "s/n"}`));
+  const d = r[4] ? r[4].split("-").reverse().join("/") : "s/d";
+  c.appendChild(el("div", "meta", `${META.turmas[r[3]] || "colegiado não informado"} · sessão ${d}`));
+  const chips = el("div", "chips");
+  if (META.assuntos[r[5]]) chips.appendChild(el("span", "chip", META.assuntos[r[5]]));
+  if (r[6]) chips.appendChild(el("span", "chip " + (r[6] === 1 ? "ok" : r[6] === 2 ? "bad" : "nt"), "Nulidade " + META.teses[r[6]]));
+  if (r[7]) chips.appendChild(el("span", "chip " + (r[7] === 1 ? "ok" : r[7] === 2 ? "bad" : "nt"), "Prescrição " + META.teses[r[7]]));
+  const rs = RES[r[8]]; if (rs) chips.appendChild(el("span", "chip " + rs[1], rs[0]));
+  c.appendChild(chips);
+  c.appendChild(el("p", "", r[9]));
+  if (r[10]) { const p = el("p"); const a = el("a", "", "Abrir o acórdão (PDF oficial)"); a.href = META.link + r[10]; a.target = "_blank"; a.rel = "noopener"; p.appendChild(a); c.appendChild(p); }
+  return c;
+}
+
+function mais() {
+  const fim = Math.min(acha.length, mostrando + 25);
+  const frag = document.createDocumentFragment();
+  for (let i = mostrando; i < fim; i++) frag.appendChild(card(acha[i]));
+  $("#lista").appendChild(frag);
+  mostrando = fim;
+  $("#mais").hidden = mostrando >= acha.length;
+  if (!acha.length) $("#lista").replaceChildren(el("div", "empty", "Nenhum acórdão com esses filtros. Tire um filtro ou marque mais anos."));
+}
+
+let timer; const agenda = () => { clearTimeout(timer); timer = setTimeout(filtrar, 160); };
+
+async function marcarAno(a, on) {
+  if (on) { $("#anosHint").textContent = `carregando ${a}…`; try { await carregarAno(a); sel.add(a); } catch (e) { $("#anosHint").textContent = `erro ao carregar ${a}`; return; } $("#anosHint").textContent = ""; }
+  else sel.delete(a);
+  filtrar();
+}
+
+function montarFiltros() {
+  const ys = $("#anos");
+  [...META.anos].sort().reverse().forEach((a) => {
+    const l = el("label"); const i = el("input"); i.type = "checkbox"; i.value = a; i.id = "ano" + a;
+    i.addEventListener("change", () => marcarAno(a, i.checked));
+    l.append(i, el("span", "", a)); l.title = fmt(META.n[a]) + " acórdãos"; ys.appendChild(l);
+  });
+  const ass = $("#assunto"); ass.appendChild(new Option("Qualquer matéria", ""));
+  META.assuntos.map((n, i) => [n, i]).filter((x) => x[0]).sort((a, b) => a[0].localeCompare(b[0], "pt")).forEach(([n, i]) => ass.appendChild(new Option(n, String(i))));
+  const tu = $("#turma"); tu.appendChild(new Option("Qualquer colegiado", ""));
+  META.turmas.map((n, i) => [n, i]).filter((x) => x[0]).sort((a, b) => a[0].localeCompare(b[0], "pt")).forEach(([n, i]) => tu.appendChild(new Option(n, String(i))));
+  ["#nul", "#pre", "#res", "#turma", "#assunto"].forEach((s) => $(s).addEventListener("change", filtrar));
+  $("#q").addEventListener("input", () => { if ($("#sem") && $("#sem").checked) return; agenda(); });
+  $("#q").addEventListener("keydown", (e) => { if (e.key === "Enter" && $("#sem") && $("#sem").checked) filtrar(); });
+  $("#mais").addEventListener("click", mais);
+  $("#limpar").addEventListener("click", () => { $("#q").value = ""; ["#nul", "#pre"].forEach((s) => ($(s).value = "0")); ["#res", "#turma", "#assunto"].forEach((s) => ($(s).value = "")); filtrar(); });
+  $("#copiar").addEventListener("click", async () => {
+    const t = acha.slice(0, 200).map(citacao).join("\n");
+    try { await navigator.clipboard.writeText(t); $("#copiar").textContent = "Copiado"; } catch (e) { $("#copiar").textContent = "Não foi possível copiar"; }
+    setTimeout(() => ($("#copiar").textContent = "Copiar citações"), 1800);
+  });
+}
+
+function montarProntas() {
+  const box = $("#prontas");
+  PRONTAS.forEach((p) => {
+    const b = el("button", "b", p.titulo); b.type = "button";
+    b.addEventListener("click", async () => {
+      $("#q").value = ""; ["#nul", "#pre"].forEach((x) => ($(x).value = "0")); ["#res", "#turma", "#assunto"].forEach((x) => ($(x).value = ""));
+      $("#anosHint").textContent = "carregando…";
+      for (const a of p.anos) { try { await carregarAno(a); } catch (e) { /* ano indisponível */ } }
+      $("#anosHint").textContent = "";
+      const porId = new Map();
+      p.anos.forEach((a) => anos[a] && anos[a].rows.forEach((r) => porId.set(r[0], r)));
+      acha = p.ids.map((i) => porId.get(i)).filter(Boolean);
+      mostrando = 0; $("#lista").replaceChildren();
+      const c = $("#cont"); c.replaceChildren(el("b", "", fmt(acha.length)), document.createTextNode(` acórdãos para “${p.titulo}”, em ordem de relevância`));
+      mais();
+    });
+    box.appendChild(b);
+  });
+}
+
+/* ---------- tendências ---------- */
+function agregarTend(trib) {
+  const m = {};
+  OFICIAL.tendencia.forEach(([a, t, d, n]) => { if (trib && t !== trib) return; const o = (m[a] = m[a] || { t: 0, p: 0, n: 0, c: 0 }); o.t += n; if (d === "PROVIDO" || d === "PROVIDO_PARCIAL") o.p += n; else if (d === "NEGADO") o.n += n; else if (d === "NAO_CONHECIDO") o.c += n; });
+  return Object.entries(m).map(([a, o]) => ({ ano: +a, ...o })).filter((o) => o.t >= 20).sort((x, y) => x.ano - y.ano);
+}
+
+function grafico(dados) {
+  const W = 760, H = 280, L = 40, R = 70, T = 14, B = 28, pw = W - L - R, ph = H - T - B;
+  const x = (i) => L + (dados.length === 1 ? pw / 2 : (i * pw) / (dados.length - 1));
+  const y = (v) => T + ph - (v / 70) * ph;
+  let s = `<svg viewBox="0 0 ${W} ${H}" width="100%" style="min-width:520px" role="img" aria-label="Percentual de recursos providos, negados e não conhecidos por ano">`;
+  for (let v = 0; v <= 70; v += 10) s += `<line x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)" stroke-width="1"/><text x="${L - 6}" y="${y(v) + 4}" text-anchor="end">${v}%</text>`;
+  dados.forEach((d, i) => { s += `<text x="${x(i)}" y="${H - 8}" text-anchor="middle">${d.ano}</text>`; });
+  const fim = dados[dados.length - 1], ocupados = [];
+  const yLabel = (k) => { let v = y((fim[k] / fim.t) * 100) + 4; while (ocupados.some((o) => Math.abs(o - v) < 14)) v += 14; ocupados.push(v); return v; };
+  [["p", "var(--c1)", "Provido"], ["n", "var(--c2)", "Negado"], ["c", "var(--c3)", "Não conhecido"]].forEach(([k, col]) => {
+    const pts = dados.map((d, i) => `${x(i)},${y((d[k] / d.t) * 100)}`).join(" ");
+    s += `<polyline points="${pts}" fill="none" stroke="${col}" stroke-width="2.4" stroke-linejoin="round"/>`;
+    dados.forEach((d, i) => { s += `<circle cx="${x(i)}" cy="${y((d[k] / d.t) * 100)}" r="${i === dados.length - 1 ? 4.5 : 2.6}" fill="${col}"/>`; });
+    const u = dados[dados.length - 1];
+    s += `<text class="lbl" x="${x(dados.length - 1) + 9}" y="${yLabel(k)}">${Math.round((u[k] / u.t) * 100)}%</text>`;
+  });
+  return s + "</svg>";
+}
+
+function montarTend() {
+  const tot = {}; OFICIAL.tendencia.forEach(([, t, , n]) => { tot[t] = (tot[t] || 0) + n; });
+  const tribs = Object.keys(tot).filter((t) => t).sort((a, b) => tot[b] - tot[a]);
+  const s = $("#trib"); s.appendChild(new Option("Todos os tributos", "")); tribs.slice(0, 40).forEach((t) => s.appendChild(new Option(t, t)));
+  const draw = () => {
+    const d = agregarTend(s.value);
+    $("#chart").innerHTML = d.length ? grafico(d) : "<div class='empty'>Poucos julgamentos para este tributo.</div>";
+    const t = $("#ttab"); t.replaceChildren();
+    const h = el("tr"); ["Ano", "Julgados", "Provido", "Negado", "Não conhecido"].forEach((c, i) => h.appendChild(el("th", i ? "n" : "", c))); t.appendChild(h);
+    d.slice().reverse().forEach((o) => { const r = el("tr"); [o.ano, fmt(o.t), pct(o.p, o.t), pct(o.n, o.t), pct(o.c, o.t)].forEach((v, i) => r.appendChild(el("td", i ? "n" : "", String(v)))); t.appendChild(r); });
+  };
+  s.addEventListener("change", draw); draw();
+}
+const pct = (a, b) => (b ? Math.round((a / b) * 100) + "%" : "–");
+
+/* ---------- estoque ---------- */
+function montarEstoque() {
+  const E = OFICIAL.estoque;
+  $("#estLead").textContent = `Processos pendentes em ${E.ref}, por fase, a partir do dado aberto oficial de Estoque.`;
+  const tot = {}; E.linhas.forEach(([, t, n]) => { tot[t] = (tot[t] || 0) + n; });
+  const s = $("#etrib"); s.appendChild(new Option("Todos os tributos", "")); Object.keys(tot).filter((t) => t).sort((a, b) => tot[b] - tot[a]).slice(0, 40).forEach((t) => s.appendChild(new Option(t, t)));
+  const draw = () => {
+    const m = {}; let total = 0;
+    E.linhas.forEach(([f, t, n]) => { if (s.value && t !== s.value) return; m[f || "Não informada"] = (m[f || "Não informada"] || 0) + n; total += n; });
+    const ord = Object.entries(m).sort((a, b) => b[1] - a[1]).slice(0, 12), max = ord.length ? ord[0][1] : 1;
+    $("#ekpi").replaceChildren(); const k = el("div"); k.append(el("b", "", fmt(total)), el("span", "", "processos pendentes" + (s.value ? " em " + s.value : ""))); $("#ekpi").appendChild(k);
+    const box = $("#ebars"); box.replaceChildren();
+    ord.forEach(([f, n]) => { const r = el("div", "hbar"); const t = el("div", "t"); t.style.width = Math.max(2, (n / max) * 100) + "%"; const w = el("div"); w.appendChild(t); r.append(el("div", "nm", f), w, el("div", "v", fmt(n))); box.appendChild(r); });
+  };
+  s.addEventListener("change", draw); draw();
+}
+
+/* ---------- boletim ---------- */
+async function montarBoletim() {
+  const alvo = $("#bol"); alvo.replaceChildren();
+  const tot = {}; OFICIAL.tendencia.forEach(([, t, , n]) => { tot[t] = (tot[t] || 0) + n; });
+  const sl = el("select"); sl.id = "btrib";
+  Object.keys(tot).filter((t) => t).sort((a, b) => tot[b] - tot[a]).slice(0, 40).forEach((t) => sl.appendChild(new Option(t, t)));
+  if (tot["PIS/PASEP"]) sl.value = "PIS/PASEP";
+  const topo = el("div"); topo.style.cssText = "max-width:360px;margin-bottom:14px"; const lb = el("label", "", "Tributo"); lb.htmlFor = "btrib"; topo.append(lb, sl);
+  const corpo = el("div"); alvo.append(topo, corpo);
+  const termo = el("div"); termo.style.cssText = "max-width:360px;margin-bottom:14px"; const l2 = el("label", "", "Tema nas decisões recentes"); l2.htmlFor = "bterm";
+  const it = el("input"); it.id = "bterm"; it.type = "search"; it.value = "insumo"; termo.append(l2, it); alvo.insertBefore(termo, corpo);
+  const ult = META.anos[META.anos.length - 1];
+  try { await carregarAno(ult); } catch (e) { /* segue sem as decisões recentes */ }
+  const draw = () => {
+    corpo.replaceChildren();
+    const d = agregarTend(sl.value);
+    if (!d.length) { corpo.appendChild(el("div", "empty", "Poucos julgamentos oficiais para este tributo.")); return; }
+    const u = d[d.length - 1], p = d[d.length - 2];
+    corpo.appendChild(el("h2", "", `Em ${u.ano}, ${pct(u.p, u.t)} dos recursos de ${sl.value} foram providos, total ou parcialmente`));
+    corpo.appendChild(el("p", "lead", `${p ? `Em ${p.ano} foram ${pct(p.p, p.t)}. ` : ""}Base: ${fmt(u.t)} recursos julgados em ${u.ano}, dado aberto oficial.`));
+    const sv = el("div", "scroll"); sv.innerHTML = grafico(d); corpo.appendChild(sv);
+    if (!anos[ult]) return;
+    const tk = fold(it.value).split(/[^a-z0-9]+/).filter((t) => t.length > 1);
+    const novos = anos[ult].rows.filter((r) => { const e = fold(r[9] + " " + META.assuntos[r[5]]); return tk.every((t) => e.includes(t)) && e.includes(fold(sl.value.split("/")[0])); }).slice(0, 5);
+    corpo.appendChild(el("h2", "", `Decisões recentes de ${sl.value} sobre “${it.value}” (${ult})`));
+    if (!novos.length) corpo.appendChild(el("div", "empty", "Nenhuma decisão encontrada."));
+    novos.forEach((r) => corpo.appendChild(card(r)));
+  };
+  sl.addEventListener("change", draw); it.addEventListener("input", () => { clearTimeout(timer); timer = setTimeout(draw, 250); });
+  draw();
+}
+
+/* ---------- revisão LGPD ---------- */
+function wilson(k, n) { if (!n) return [0, 0]; const z = 1.96, p = k / n, d = 1 + (z * z) / n, c = p + (z * z) / (2 * n), m = z * Math.sqrt((p * (1 - p)) / n + (z * z) / (4 * n * n)); return [Math.max(0, (c - m) / d), Math.min(1, (c + m) / d)]; }
+const estado = (() => { try { return JSON.parse(store.get("carf-revisao") || "{}"); } catch (e) { return {}; } })();
+
+function resumoRev() {
+  const feitos = REVISAO.filter((r) => estado[r.id] && estado[r.id].ok), n = feitos.length;
+  const vaz = feitos.filter((r) => estado[r.id].nome || estado[r.id].ident).length, [lo, hi] = wilson(vaz, n);
+  const k = $("#rkpi"); k.replaceChildren();
+  [[`${n} de ${REVISAO.length}`, "acórdãos revisados"], [String(vaz), "com dado pessoal remanescente"], [n ? `${(lo * 100).toFixed(1)}% a ${(hi * 100).toFixed(1)}%` : "–", "taxa de vazamento (IC 95%)"]].forEach(([b, s]) => { const d = el("div"); d.append(el("b", "", b), el("span", "", s)); k.appendChild(d); });
+}
+
+function montarRevisao() {
+  const box = $("#rlist");
+  REVISAO.forEach((r) => {
+    const e = (estado[r.id] = estado[r.id] || {});
+    const d = el("div", "rev" + (e.ok ? " feito" : ""));
+    d.appendChild(el("h3", "", `${r.id} · ${r.cit}`));
+    d.appendChild(el("div", "hint", `${r.palavras} palavras · ${r.mascaras} máscaras aplicadas`));
+    if (r.ctx.length) { const b = el("blockquote", "", "Máscaras: " + r.ctx.join("  |  ")); d.appendChild(b); }
+    d.appendChild(el("blockquote", "", r.trecho));
+    const ch = el("div", "checks");
+    [["nome", "Nome de pessoa visível"], ["ident", "CPF/CNPJ/endereço visível"], ["indevida", "Máscara indevida"], ["ok", "Revisado"]].forEach(([k, t]) => {
+      const l = el("label"); const i = el("input"); i.type = "checkbox"; i.id = `r${r.id}${k}`; i.checked = !!e[k];
+      i.addEventListener("change", () => { e[k] = i.checked; if (k !== "ok" && i.checked) { e.ok = true; ch.querySelector("[id$=ok]").checked = true; } d.classList.toggle("feito", !!e.ok); store.set("carf-revisao", JSON.stringify(estado)); resumoRev(); });
+      l.append(i, document.createTextNode(t)); ch.appendChild(l);
+    });
+    d.appendChild(ch); box.appendChild(d);
+  });
+  $("#rcopy").addEventListener("click", async () => {
+    const linhas = ["id,nome_visivel,identificador_visivel,mascara_indevida,revisado"].concat(REVISAO.map((r) => { const e = estado[r.id] || {}; return [r.id, +!!e.nome, +!!e.ident, +!!e.indevida, +!!e.ok].join(","); }));
+    try { await navigator.clipboard.writeText(linhas.join("\n")); $("#rmsg").textContent = "CSV copiado. Cole numa planilha."; } catch (e) { $("#rmsg").textContent = "Não foi possível copiar."; }
+  });
+  resumoRev();
+}
+
+/* ---------- início ---------- */
+function abas() {
+  const hash = location.hash.slice(1);
+  document.querySelectorAll("#tabs button").forEach((b) => b.addEventListener("click", () => ir(b.dataset.t)));
+  function ir(t) {
+    document.querySelectorAll("#tabs button").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.t === t)));
+    document.querySelectorAll("main > section").forEach((s) => (s.hidden = s.id !== t));
+  }
+  if (hash && document.getElementById(hash)) ir(hash);
+}
+
+(async function () {
+  abas();
+  try {
+    [META, OFICIAL] = await Promise.all([getJson("meta.json"), getJson("oficial.json")]);
+    try { REVISAO = await getJson("revisao.json"); } catch (e) {}
+    try { PRONTAS = await getJson("prontas.json"); } catch (e) {}
+    const total = Object.values(META.n).reduce((a, b) => a + b, 0);
+    $("#sub").textContent = `${fmt(total)} acórdãos de ${META.anos[0]} a ${META.anos[META.anos.length - 1]} · texto anonimizado`;
+    try { const h = await fetch("api/saude"); if (h.ok && (await h.json()).ok) { $("#srv").hidden = false; $("#tok").value = store.get("carf-token") || ""; $("#sem").addEventListener("change", () => { $("#tok").hidden = !$("#sem").checked; filtrar(); }); } } catch (e) { /* sem servidor: só a busca por palavras */ }
+    montarFiltros(); montarProntas(); montarTend(); montarEstoque(); montarRevisao();
+    const ult = META.anos[META.anos.length - 1];
+    await marcarAno(ult, true); $("#ano" + ult).checked = true;
+    montarBoletim();
+  } catch (e) {
+    console.error(e);
+    $("#sub").textContent = "Não foi possível carregar os dados. Recarregue a página.";
+  }
+})();
+</script>

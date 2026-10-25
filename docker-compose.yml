@@ -1,0 +1,32 @@
+# Servidor próprio: app (API + painel) atrás do Caddy (HTTPS) e um agendador diário.
+# Uso: cp deploy/.env.example .env && editar; docker compose up -d --build
+name: carf
+services:
+  app:
+    build: .
+    command: ["serve", "--host", "0.0.0.0", "--porta", "8000", "--painel", "/data/painel", "--tokens", "/data/tokens.json"]
+    volumes: ["carf-data:/data"]
+    restart: unless-stopped
+    expose: ["8000"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request as u; u.urlopen('http://localhost:8000/api/saude')"]
+      interval: 30s
+  agendador:
+    build: .
+    entrypoint: ["/bin/sh", "/app/deploy/agendador.sh"]
+    volumes: ["carf-data:/data", "./deploy:/app/deploy:ro"]
+    restart: unless-stopped
+    environment:
+      HORA_UTC: "${HORA_UTC:-07}"
+      ANO_MIN: "${ANO_MIN:-2018}"
+  caddy:
+    image: caddy:2
+    ports: ["80:80", "443:443"]
+    environment:
+      DOMINIO: "${DOMINIO:-localhost}"
+    volumes: ["./deploy/Caddyfile:/etc/caddy/Caddyfile:ro", "caddy-data:/data"]
+    depends_on: [app]
+    restart: unless-stopped
+volumes:
+  carf-data:
+  caddy-data:

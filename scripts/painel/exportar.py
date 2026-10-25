@@ -1,0 +1,135 @@
+"""Gera os dados do painel HTML: um JSON por ano (colunar, com dicionários), tendências do dado
+oficial, estoque, a amostra de revisão LGPD e pesquisas prontas (opcional, usa o índice e5).
+
+Uso: python scripts/painel/exportar.py DATA_DIR SAIDA_DIR [--revisao revisao/amostra-....md] [--prontas]
+"""
+
+import argparse
+import json
+import re
+import unicodedata
+from collections import Counter
+from pathlib import Path
+
+from carf.qa import consulta
+from carf.qa import gerenciais as qg
+from carf.store import Store
+
+LINK = "https://acordaos.economia.gov.br/acordaos2/pdfs/processados/"
+COLS = ["id", "decisao", "processo", "turma", "data", "assunto", "nul", "pre", "res", "ementa", "pdf"]
+TESE = {None: 0, "ACOLHIDA": 1, "REJEITADA": 2, "INDEFINIDA": 3}
+
+
+_SIGLA = re.compile(r"^\(?[A-ZÀ-Ú/]{2,6}\)?$")
+
+
+def _conserta(a: str) -> str:
+    """Desfaz máscaras indevidas do NER no cabeçalho (poucas dezenas de ementas)."""
+    a = re.sub(r"(pessoa f[íi]sica\s*[-(]\s*)\[NOME\]", r"\1IRPF", a, flags=re.IGNORECASE)
+    a = re.sub(r"(retido na fonte\s*[-(]\s*)\[NOME\]", r"\1IRRF", a, flags=re.IGNORECASE)
+    return a.replace("[NOME]", "Pessoa")
+
+
+def _chave_assunto(a: str) -> str:
+    sem = unicodedata.normalize("NFKD", _conserta(a))
+    return re.sub(r"[^a-z0-9]+", " ", "".join(c for c in sem if not unicodedata.combining(c)).lower()).strip()
+
+
+def assunto_limpo(a: str) -> str:
+    """Caixa de frase para o que vem em CAIXA ALTA (mantém siglas entre parênteses ou no fim)."""
+    a = " ".join(_conserta(a).split())
+    if not a.isupper():
+        return a
+    ps = a.split()
+    ps = [p if _SIGLA.match(p) and ("(" in p or i == len(ps) - 1) else p.lower() for i, p in enumerate(ps)]
+    t = " ".join(ps)
+    return t[:1].upper() + t[1:]
+
+
+def canonicos(assuntos) -> dict[str, str]:
+    """'(IRPF)', '- IRPF' e a versão em caixa alta contam como a mesma matéria; vale a forma mais comum."""
+    cont: dict[str, Counter] = {}
+    for a in assuntos:
+        if a:
+            cont.setdefault(_chave_assunto(a), Counter())[assunto_limpo(a)] += 1
+    return {k: max(c.items(), key=lambda kv: (kv[1], not kv[0].isupper()))[0] for k, c in cont.items()}
+
+
+def resumo_ementa(e: str | None, n=230) -> str:
+    """Tira o cabeçalho 'Assunto: ... Ano-calendário: ...' (já vai em coluna própria) e corta."""
+    e = " ".join((e or "").split())
+    e = re.sub(r"^assunto:\s*.*?(?:per[íi]odo de apura[çc][ãa]o|ano-calend[áa]rio|exerc[íi]cio|data do fato gerador)"
+               r"\s*:\s*[\d/,\s]*(?:a\s*[\d/]+)?\s*", "", e, flags=re.IGNORECASE)
+    return e[:n] + ("…" if len(e) > n else "")
+
+
+def exportar_anos(con, saida: Path, anos_min: int) -> dict:
+    d = saida / "dados"
+    d.mkdir(parents=True, exist_ok=True)
+    turmas, assuntos = {}, {}
+    por_ano = {}
+    q = con.execute("""SELECT id, numero_decisao, numero_processo, turma, dt_sessao, ano, assunto, tese_nulidade,
+                       tese_prescricao, decisao, ementa, nome_arquivo_pdf FROM acordaos
+                       WHERE ano >= ? ORDER BY dt_sessao DESC, id""", [anos_min])
+    linhas = q.fetchall()
+    canon = canonicos(l[6] for l in linhas)
+    for (id_, dec, proc, turma, dt, ano, assunto, nul, pre, decisao, ementa, pdf) in linhas:
+        ti = turmas.setdefault(turma or "", len(turmas))
+        ai = assuntos.setdefault(canon.get(_chave_assunto(assunto), "") if assunto else "", len(assuntos))
+        por_ano.setdefault(ano, []).append([
+            id_, dec, proc, ti, dt.isoformat() if dt else None, ai, TESE[nul], TESE[pre],
+            consulta.classificar_resultado(decisao), resumo_ementa(ementa), pdf])
+    for ano, rows in por_ano.items():
+        (d / f"ano-{ano}.json").write_text(json.dumps({"cols": COLS, "rows": rows}, ensure_ascii=False, separators=(",", ":")))
+    meta = {"anos": sorted(por_ano), "n": {str(a): len(r) for a, r in por_ano.items()},
+            "turmas": list(turmas), "assuntos": list(assuntos), "link": LINK,
+            "teses": ["", "acolhida", "rejeitada", "indefinida"]}
+    (saida / "meta.json").write_text(json.dumps(meta, ensure_ascii=False, separators=(",", ":")))
+    return meta
+
+
+def exportar_oficial(raiz: Path, saida: Path):
+    g = qg.conectar(raiz)
+    df = g.execute("""SELECT ano, tributo, desfecho, count(*) n FROM julgamentos WHERE tipo_resultado='Acórdão'
+                      AND desfecho IS NOT NULL AND ano >= 2012 GROUP BY 1,2,3""").df()
+    tend = [[int(a), t if isinstance(t, str) else "", d, int(n)] for a, t, d, n in df.itertuples(index=False)]
+    ano, mes = g.execute("SELECT ano_referencia, mes_referencia FROM estoque ORDER BY 1 DESC, 2 DESC LIMIT 1").fetchone()
+    e = g.execute("""SELECT fase_processual, tributo, count(DISTINCT numero_processo) n FROM estoque
+                     WHERE ano_referencia=? AND mes_referencia=? GROUP BY 1,2""", [ano, mes]).df()
+    est = {"ref": f"{mes:02d}/{ano}",
+           "linhas": [[f if isinstance(f, str) else "", t if isinstance(t, str) else "", int(n)] for f, t, n in e.itertuples(index=False)]}
+    (saida / "oficial.json").write_text(json.dumps({"tendencia": tend, "estoque": est}, ensure_ascii=False, separators=(",", ":")))
+
+
+def exportar_revisao(md: Path, saida: Path):
+    itens = []
+    for bloco in re.split(r"\n## ", md.read_text())[1:]:
+        cab, _, corpo = bloco.partition("\n")
+        id_, _, cit = cab.partition(": ")
+        ctx = re.findall(r"^- (.*)$", corpo.split("**Trecho")[0], flags=re.MULTILINE)
+        trecho = "\n".join(re.findall(r"^> (.*)$", corpo, flags=re.MULTILINE))
+        pal = re.search(r"palavras: (\d+) \| máscaras: (\d+)", corpo)
+        itens.append({"id": id_, "cit": re.sub(r"\s*\[id .*$", "", cit), "palavras": int(pal.group(1)) if pal else 0,
+                      "mascaras": int(pal.group(2)) if pal else 0, "ctx": [c for c in ctx if "nenhuma" not in c], "trecho": trecho})
+    (saida / "revisao.json").write_text(json.dumps(itens, ensure_ascii=False, separators=(",", ":")))
+    return len(itens)
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("data_dir")
+    ap.add_argument("saida")
+    ap.add_argument("--ano-min", type=int, default=2018)
+    ap.add_argument("--revisao")
+    a = ap.parse_args()
+    raiz, saida = Path(a.data_dir), Path(a.saida)
+    saida.mkdir(parents=True, exist_ok=True)
+    meta = exportar_anos(Store(raiz).connect(), saida, a.ano_min)
+    exportar_oficial(raiz, saida)
+    if a.revisao:
+        exportar_revisao(Path(a.revisao), saida)
+    print(f"ok: {sum(meta['n'].values())} acórdãos em {len(meta['anos'])} anos")
+
+
+if __name__ == "__main__":
+    main()

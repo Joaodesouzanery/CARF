@@ -72,6 +72,17 @@ def cmd_enriquecer(args):
     construir_facets(Store(config.DATA_DIR))
 
 
+def cmd_serve(args):
+    from . import server
+
+    tokens = Path(args.tokens)
+    if args.novo_token:
+        print(f"Token do escritório {args.novo_token} (guarde agora; só o hash fica no servidor):\n"
+              f"{server.novo_token(tokens, args.novo_token)}")
+        return
+    server.main(config.DATA_DIR, args.painel, args.host, args.porta, tokens, args.sem_token)
+
+
 def cmd_search(args):
     con = Store(config.DATA_DIR).connect()
     if args.modo == "lexico":
@@ -229,6 +240,14 @@ def main(argv=None):
     e.set_defaults(fn=cmd_embed)
     sub.add_parser("enriquecer", help="extrai matéria e teses (nulidade/prescrição) para filtrar a busca").set_defaults(
         fn=cmd_enriquecer)
+    sv = sub.add_parser("serve", help="painel e API de busca (token por escritório, sem log de consultas)")
+    sv.add_argument("--painel", default=str(config.DATA_DIR / "painel"), help="pasta gerada por scripts/painel")
+    sv.add_argument("--host", default="127.0.0.1")
+    sv.add_argument("--porta", type=int, default=8000)
+    sv.add_argument("--tokens", default=str(config.DATA_DIR / "tokens.json"))
+    sv.add_argument("--novo-token", metavar="ESCRITORIO", help="cria um token e sai")
+    sv.add_argument("--sem-token", action="store_true", help="só para desenvolvimento local")
+    sv.set_defaults(fn=cmd_serve)
     sub.add_parser("status", help="progresso da carga paralela").set_defaults(fn=cmd_status)
     x = sub.add_parser("texto", help="baixa e anonimiza o voto integral de um acórdão (por id)")
     x.add_argument("id")

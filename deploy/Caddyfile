@@ -1,0 +1,14 @@
+# HTTPS automático (Let's Encrypt) quando DOMINIO é um domínio real; "localhost" usa certificado local.
+# Sem access log: a consulta do advogado não deve ficar registrada em lugar nenhum.
+{$DOMINIO:localhost} {
+	log {
+		output discard
+	}
+	encode zstd gzip
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options nosniff
+		Referrer-Policy no-referrer
+	}
+	reverse_proxy app:8000
+}

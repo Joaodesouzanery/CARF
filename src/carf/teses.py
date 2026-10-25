@@ -31,7 +31,7 @@ def extrair_assunto(ementa: str | None) -> str | None:
     if not m:
         return None
     a = re.sub(r"\s+", " ", m.group(1)).strip(" :-")
-    return a or None
+    return a if a and len(a) <= 160 else None  # cabeçalho sem data de referência pega a ementa inteira
 
 
 def extrair_teses(ementa: str | None) -> str | None:
