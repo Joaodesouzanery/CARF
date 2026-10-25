@@ -2,7 +2,7 @@ import argparse
 import json
 import sys
 
-from . import config
+from . import config, gerenciais
 from .auditoria import auditar
 from .monitor import verificar_indice, vigiar_paginas
 from .privacy import Anonymizer
@@ -70,6 +70,21 @@ def cmd_compact(args):
     print(f"{Store(config.DATA_DIR).compact()} arquivos substituídos")
 
 
+def cmd_gerenciais(args):
+    from .qa import gerenciais as qg
+
+    if args.acao == "atualizar":
+        anon = None if args.sem_anonimizar else _anonimizador(args)
+        print(json.dumps(gerenciais.atualizar(config.DATA_DIR, anon), ensure_ascii=False, indent=2))
+        return
+    con = qg.conectar()
+    if args.acao == "desfechos":
+        print(qg.desfecho_por(con, args.por).to_string(index=False))
+    else:
+        df = qg.estoque_por(con, args.por)
+        print(f"Estoque em {df.attrs['referencia']}\n{df.to_string(index=False)}")
+
+
 def _filtros(args) -> dict:
     return {k: getattr(args, k) for k in ("ano", "turma", "camara", "secao", "relator")
             if getattr(args, k, None) is not None}
@@ -108,6 +123,14 @@ def main(argv=None):
     t.add_argument("--resultado", action="store_true")
     filtros(t)
     t.set_defaults(fn=cmd_stats)
+
+    g = sub.add_parser("gerenciais", help="dados abertos oficiais: Julgamentos e Estoque")
+    g.add_argument("acao", choices=["atualizar", "desfechos", "estoque"])
+    g.add_argument("por", nargs="?", default="tributo")
+    g.add_argument("--sem-ner", action="store_true")
+    g.add_argument("--manter-cnpj", action="store_true")
+    g.add_argument("--sem-anonimizar", action="store_true", help="não passa a ementa pelo anonimizador")
+    g.set_defaults(fn=cmd_gerenciais)
 
     sub.add_parser("audit", help="varre a base atrás de identificadores").set_defaults(fn=cmd_audit)
     sub.add_parser("compact", help="remove versões antigas").set_defaults(fn=cmd_compact)

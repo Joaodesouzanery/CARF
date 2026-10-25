@@ -1,0 +1,237 @@
+{
+ "capturado_em": "2026-10-25",
+ "fonte": "página pública do conjunto em dados.gov.br",
+ "recursos": [
+  {
+   "conjunto": "julgamentos",
+   "nome": "CARF - Julgamentos - Metadados V2.2",
+   "formato": "PDF",
+   "url": "https://www.gov.br/carf/pt-br/acesso-a-informacao/dados-abertos/dispe/carf_julgamentos_metadados_v2-2.pdf",
+   "arquivo_atualizado": "2025-04-17"
+  },
+  {
+   "conjunto": "julgamentos",
+   "nome": "CARF - Julgamentos - 2025",
+   "formato": "CSV",
+   "url": "https://www.gov.br/carf/pt-br/acesso-a-informacao/dados-abertos/dispe/carf_julgamentos_2025.zip",
+   "arquivo_atualizado": "2026-04-02"
+  },
+  {
+   "conjunto": "julgamentos",
+   "nome": "CARF - Julgamentos - 2024",
+   "formato": "CSV",
+   "url": "https://carf.economia.gov.br/dados-abertos/dispe/carf_julgamentos_2024.zip/@@download/file/carf_julgamentos_2024.zip",
+   "arquivo_atualizado": "2025-03-27"
+  },
+  {
+   "conjunto": "julgamentos",
+   "nome": "CARF - Julgamentos - 2023",
+   "formato": "CSV",
+   "url": "https://carf.economia.gov.br/dados-abertos/dispe/carf_julgamentos_2023.zip/@@download/file/carf_julgamentos_2023.zip",
+   "arquivo_atualizado": "2024-02-28"
+  },
+  {
+   "conjunto": "julgamentos",
+   "nome": "CARF - Julgamentos - 2022",
+   "formato": "CSV",
+   "url": "https://carf.economia.gov.br/dados-abertos/dispe/carf_julgamentos_2022.zip/@@download/file/CARF_Julgamentos_2022.zip",
+   "arquivo_atualizado": "2023-06-17"
+  },
+  {
+   "conjunto": "julgamentos",
+   "nome": "CARF - Julgamentos - 2021",
+   "formato": "CSV",
+   "url": "https://carf.economia.gov.br/dados-abertos/dispe/carf_julgamentos_2021.zip/@@download/file/CARF_Julgamentos_2021.zip",
+   "arquivo_atualizado": "2023-06-17"
+  },
+  {
+   "conjunto": "julgamentos",
+   "nome": "CARF - Julgamentos - 2020",
+   "formato": "CSV",
+   "url": "https://carf.economia.gov.br/dados-abertos/dispe/carf_julgamentos_2020.zip/@@download/file/CARF_Julgamentos_2020.zip",
+   "arquivo_atualizado": "2023-06-17"
+  },
+  {
+   "conjunto": "julgamentos",
+   "nome": "CARF - Julgamentos - 2019",
+   "formato": "CSV",
+   "url": "https://carf.economia.gov.br/dados-abertos/dispe/carf_julgamentos_2019.zip/@@download/file/CARF_Julgamentos_2019.zip",
+   "arquivo_atualizado": "2023-06-17"
+  },
+  {
+   "conjunto": "julgamentos",
+   "nome": "CARF - Julgamentos - 2018",
+   "formato": "CSV",
+   "url": "https://carf.economia.gov.br/dados-abertos/dispe/carf_julgamentos_2018.zip/@@download/file/CARF_Julgamentos_2018.zip",
+   "arquivo_atualizado": "2023-06-17"
+  },
+  {
+   "conjunto": "julgamentos",
+   "nome": "CARF - Julgamentos - 2017",
+   "formato": "CSV",
+   "url": "https://carf.economia.gov.br/dados-abertos/dispe/carf_julgamentos_2017.zip/@@download/file/CARF_Julgamentos_2017.zip",
+   "arquivo_atualizado": "2023-06-17"
+  },
+  {
+   "conjunto": "julgamentos",
+   "nome": "CARF - Julgamentos - 2016",
+   "formato": "CSV",
+   "url": "https://carf.economia.gov.br/dados-abertos/dispe/carf_julgamentos_2016.zip/@@download/file/CARF_Julgamentos_2016.zip",
+   "arquivo_atualizado": "2023-06-17"
+  },
+  {
+   "conjunto": "julgamentos",
+   "nome": "CARF - Julgamentos - 2015",
+   "formato": "CSV",
+   "url": "https://carf.economia.gov.br/dados-abertos/dispe/carf_julgamentos_2015.zip/@@download/file/CARF_Julgamentos_2015.zip",
+   "arquivo_atualizado": "2023-06-17"
+  },
+  {
+   "conjunto": "julgamentos",
+   "nome": "CARF - Julgamentos - 2014",
+   "formato": "CSV",
+   "url": "https://carf.economia.gov.br/dados-abertos/dispe/carf_julgamentos_2014.zip/@@download/file/CARF_Julgamentos_2014.zip",
+   "arquivo_atualizado": "2023-06-17"
+  },
+  {
+   "conjunto": "julgamentos",
+   "nome": "CARF - Julgamentos - 2013",
+   "formato": "CSV",
+   "url": "https://carf.economia.gov.br/dados-abertos/dispe/carf_julgamentos_2013.zip/@@download/file/CARF_Julgamentos_2013.zip",
+   "arquivo_atualizado": "2023-06-17"
+  },
+  {
+   "conjunto": "julgamentos",
+   "nome": "CARF - Julgamentos - 2012",
+   "formato": "CSV",
+   "url": "https://carf.economia.gov.br/dados-abertos/dispe/carf_julgamentos_2012.zip/@@download/file/CARF_Julgamentos_2012.zip",
+   "arquivo_atualizado": "2023-06-17"
+  },
+  {
+   "conjunto": "estoque",
+   "nome": "CARF - Estoque - Metadados V2",
+   "formato": "PDF",
+   "url": "https://carf.economia.gov.br/dados-abertos/dispe/carf_est_metadados_v2.pdf/@@download/file/CARF_Est_Metadados_V2.pdf",
+   "arquivo_atualizado": "2023-06-16"
+  },
+  {
+   "conjunto": "estoque",
+   "nome": "CARF - Estoque Processos - agosto a dezembro/2018",
+   "formato": "CSV",
+   "url": "https://carf.economia.gov.br/dados-abertos/dispe/carf_estoque_2018_agostoadezembro.zip/@@download/file/CARF_Estoque_2018_AgostoADezembro.zip",
+   "arquivo_atualizado": "2023-06-16"
+  },
+  {
+   "conjunto": "estoque",
+   "nome": "CARF - Estoque Processos - 1o Semestre/2019",
+   "formato": "CSV",
+   "url": "https://carf.economia.gov.br/dados-abertos/dispe/carf_estoque_2019_1semestre.zip/@@download/file/CARF_Estoque_2019_1Semestre.zip",
+   "arquivo_atualizado": "2023-06-16"
+  },
+  {
+   "conjunto": "estoque",
+   "nome": "CARF - Estoque Processos - 2o Semestre/2019",
+   "formato": "CSV",
+   "url": "https://carf.economia.gov.br/dados-abertos/dispe/carf_estoque_2019_2semestre.zip/@@download/file/CARF_Estoque_2019_2Semestre.zip",
+   "arquivo_atualizado": "2023-06-16"
+  },
+  {
+   "conjunto": "estoque",
+   "nome": "CARF - Estoque Processos - 1o Semestre/2020",
+   "formato": "CSV",
+   "url": "https://carf.economia.gov.br/dados-abertos/dispe/carf_estoque_2020_1semestre.zip/@@download/file/CARF_Estoque_2020_1Semestre.zip",
+   "arquivo_atualizado": "2023-06-16"
+  },
+  {
+   "conjunto": "estoque",
+   "nome": "CARF - Estoque Processos - 2o Semestre/2020",
+   "formato": "CSV",
+   "url": "https://carf.economia.gov.br/dados-abertos/dispe/carf_estoque_2020_2semestre.zip/@@download/file/CARF_Estoque_2020_2Semestre.zip",
+   "arquivo_atualizado": "2023-06-16"
+  },
+  {
+   "conjunto": "estoque",
+   "nome": "CARF - Estoque Processos - 1o Semestre/2021",
+   "formato": "CSV",
+   "url": "https://carf.economia.gov.br/dados-abertos/dispe/carf_estoque_2021_1semestre.zip/@@download/file/CARF_Estoque_2021_1Semestre.zip",
+   "arquivo_atualizado": "2023-06-16"
+  },
+  {
+   "conjunto": "estoque",
+   "nome": "CARF - Estoque Processos - 2o Semestre/2021",
+   "formato": "CSV",
+   "url": "https://carf.economia.gov.br/dados-abertos/dispe/carf_estoque_2021_2semestre.zip/@@download/file/CARF_Estoque_2021_2Semestre.zip",
+   "arquivo_atualizado": "2023-06-16"
+  },
+  {
+   "conjunto": "estoque",
+   "nome": "CARF - Estoque Processos - 1o Semestre/2022",
+   "formato": "CSV",
+   "url": "https://carf.economia.gov.br/dados-abertos/dispe/carf_estoque_2022_1semestre.zip/@@download/file/CARF_Estoque_2022_1Semestre.zip",
+   "arquivo_atualizado": "2023-06-16"
+  },
+  {
+   "conjunto": "estoque",
+   "nome": "CARF - Estoque Processos - 2o Semestre/2022",
+   "formato": "CSV",
+   "url": "https://carf.economia.gov.br/dados-abertos/dispe/carf_estoque_2022_2semestre.zip/@@download/file/CARF_Estoque_2022_2Semestre.zip",
+   "arquivo_atualizado": "2023-06-16"
+  },
+  {
+   "conjunto": "estoque",
+   "nome": "CARF - Estoque Processos - 1o Semestre/2023",
+   "formato": "CSV",
+   "url": "https://carf.economia.gov.br/dados-abertos/dispe/carf_estoque_2023_1semestre.zip/@@download/file/CARF_Estoque_2023_1Semestre.zip",
+   "arquivo_atualizado": "2023-08-10"
+  },
+  {
+   "conjunto": "estoque",
+   "nome": "CARF - Estoque Processos - 2o Semestre/2023",
+   "formato": "CSV",
+   "url": "https://carf.economia.gov.br/dados-abertos/dispe/carf_estoque_2023_2semestre.zip/@@download/file/CARF_Estoque_2023_2Semestre.zip",
+   "arquivo_atualizado": "2024-01-10"
+  },
+  {
+   "conjunto": "estoque",
+   "nome": "CARF - Estoque Processos - 1o Semestre/2024",
+   "formato": "CSV",
+   "url": "https://carf.economia.gov.br/dados-abertos/dispe/carf_estoque_2024_1semestre.zip/@@download/file/CARF_Estoque_2024_1Semestre.zip",
+   "arquivo_atualizado": "2024-07-08"
+  },
+  {
+   "conjunto": "estoque",
+   "nome": "CARF - Estoque Processos - 2o Semestre/2024",
+   "formato": "CSV",
+   "url": "https://carf.economia.gov.br/dados-abertos/dispe/carf_estoque_2024_2semestre.zip/@@download/file/CARF_Estoque_2024_2Semestre.zip",
+   "arquivo_atualizado": "2025-01-10"
+  },
+  {
+   "conjunto": "estoque",
+   "nome": "CARF - Estoque Processos - 1o Semestre/2025",
+   "formato": "CSV",
+   "url": "https://carf.economia.gov.br/dados-abertos/dispe/carf_estoque_2025_1semestre.zip/@@download/file/CARF_Estoque_2025_1Semestre.zip",
+   "arquivo_atualizado": "2025-07-14"
+  },
+  {
+   "conjunto": "estoque",
+   "nome": "CARF - Estoque Processos - 2o Semestre/2025",
+   "formato": "CSV",
+   "url": "https://www.gov.br/carf/pt-br/acesso-a-informacao/dados-abertos/dispe/carf_estoque_2025_2semestre.zip",
+   "arquivo_atualizado": "2026-01-07"
+  },
+  {
+   "conjunto": "estoque",
+   "nome": "CARF - Estoque Processos - 1o Semestre/2026",
+   "formato": "CSV",
+   "url": "https://www.gov.br/carf/pt-br/acesso-a-informacao/dados-abertos/dispe/carf_estoque_2026_1semestre.zip",
+   "arquivo_atualizado": "2026-07-08"
+  },
+  {
+   "conjunto": "estoque",
+   "nome": "CARF - Estoque Processos - Parcial do 2o Semestre/2026 - Até Setembro",
+   "formato": "CSV",
+   "url": "https://www.gov.br/carf/pt-br/acesso-a-informacao/dados-abertos/dispe/carf_estoque_2026_2semestreparcial.zip",
+   "arquivo_atualizado": "2026-10-05"
+  }
+ ]
+}

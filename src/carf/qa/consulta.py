@@ -11,12 +11,19 @@ FILTROS = {"ano": "ano = ?", "turma": "turma = ?", "camara": "camara = ?", "seca
            "relator": "relator = ?", "numero_processo": "numero_processo = ?"}
 DIMENSOES = {"ano", "turma", "camara", "secao", "relator"}
 
-PARCIAL = re.compile(r"provimento\s+(?:parcial|em\s+parte)|parcial\s+provimento")
-RESULTADOS = [
-    ("NEGADO", re.compile(r"neg(?:ar|ado|ou|aram)(?:-lhe)?\s+provimento")),
-    ("PROVIDO", re.compile(r"(?:dar|dado|deram|dou)(?:-lhe)?\s+provimento")),
-    ("NAO_CONHECIDO", re.compile(r"n[aã]o\s+(?:conhec|tomar\s+conhecimento)")),
+# Mesma taxonomia do dado aberto oficial (gerenciais.desfecho). O mérito prevalece sobre o
+# conhecimento: "conhece parcialmente... e, na parte conhecida, nega provimento" é NEGADO.
+PARCIAL = re.compile(
+    r"provimento\s+(?:parcial|em\s+parte)|parcial\s+provimento|acolh\w*\s+parcialmente|"
+    r"acolh\w*\s+em\s+parte|parcialmente\s+(?:os\s+)?embargos"
+)
+MERITO = [
+    ("NEGADO", re.compile(r"neg(?:ar|ado|ou|aram|ando|am)(?:-lhes?)?\s+provimento")),
+    ("PROVIDO", re.compile(r"(?:dar|dado|deram|dou|dando|dao)(?:-lhes?|-se)?\s+provimento")),
+    ("ACOLHIDO", re.compile(r"acolh(?:er|ido|idos|eu|eram|endo|e)\s+(?:os\s+)?embargos")),
+    ("REJEITADO", re.compile(r"rejeit(?:ar|ou|ado|ados|aram|ando)\s+(?:os\s+)?embargos")),
 ]
+NAO_CONHECIDO = re.compile(r"n[aã]o\s+(?:conhec|tomar\s+conhecimento)")
 
 
 def _norm(s: str) -> str:
@@ -24,15 +31,39 @@ def _norm(s: str) -> str:
     return "".join(c for c in s if not unicodedata.combining(c)).casefold()
 
 
+_CITADO = re.compile(r"[“\"][^”\"]*[”\"]")  # decisão anterior citada entre aspas
+# Voto vencido não é o resultado: remove "vencidos ... que votaram por ..." até o ponto; quando a
+# cláusula não tem "que", remove só até a primeira pontuação (não apaga o "no mérito, ...").
+_VENCIDO_QUE = re.compile(r"vencid[oa]s?\b[^.]*?\bque\b[^.]*\.?")
+_VENCIDO = re.compile(r"vencid[oa]s?\b[^,;.]*")
+_OFICIO = re.compile(r"recurso\s+de\s+of[ií]cio")
+_VOLUNTARIO = re.compile(r"recurso\s+volunt[aá]rio")
+_EMBARGOS = {"ACOLHIDO", "REJEITADO"}
+
+
 def classificar_resultado(decisao: str | None) -> str:
-    """Heurística sobre o texto da decisão. Indicativa; confira por amostragem."""
-    t = _norm(decisao)
-    achados = {"PROVIDO_PARCIAL"} if PARCIAL.search(t) else set()
+    """Heurística sobre o texto da decisão; o dado oficial (gerenciais) é preferível quando existe.
+
+    Precedência: embargos > provimento parcial > demais resultados de mérito > não conhecido.
+    """
+    t = _norm(_CITADO.sub(" ", decisao or ""))
+    t = _VENCIDO.sub(" ", _VENCIDO_QUE.sub(" ", t))
+    parcial = bool(PARCIAL.search(t))
     t = PARCIAL.sub(" ", t)  # "dar provimento parcial" não conta também como "dar provimento"
-    achados |= {nome for nome, rx in RESULTADOS if rx.search(t)}
-    if len(achados) == 1:
+    achados = {nome for nome, rx in MERITO if rx.search(t)}
+    if achados & _EMBARGOS:
+        achados &= _EMBARGOS
+        if parcial:
+            achados = {"PROVIDO_PARCIAL"}
+    elif parcial:
+        # dois recursos distintos na mesma decisão (ofício e voluntário) podem ter desfechos diferentes
+        dois = _OFICIO.search(t) and _VOLUNTARIO.search(t)
+        achados = achados | {"PROVIDO_PARCIAL"} if dois else {"PROVIDO_PARCIAL"}
+    if len(achados) > 1:
+        return "MISTO"
+    if achados:
         return achados.pop()
-    return "MISTO" if achados else "OUTRO"
+    return "NAO_CONHECIDO" if NAO_CONHECIDO.search(t) else "OUTRO"
 
 
 def citacao(r: dict) -> str:

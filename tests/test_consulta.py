@@ -37,6 +37,20 @@ def con(tmp_path, anon):
     ("não conhecer do recurso", "NAO_CONHECIDO"),
     ("negar provimento ao recurso de ofício e dar provimento ao voluntário", "MISTO"),
     ("converter o julgamento em diligência", "OUTRO"),
+    ("conhecer parcialmente do recurso, não conhecendo os argumentos de constitucionalidade. "
+     "Na parte conhecida, em negar provimento ao Recurso Voluntário.", "NEGADO"),
+    ("por maioria, em conhecer do recurso e, por unanimidade, em dar parcial provimento", "PROVIDO_PARCIAL"),
+    ("conhecer do Recurso Voluntário, dando-lhe provimento", "PROVIDO"),
+    ("conhecer e acolher parcialmente os Embargos de Declaração", "PROVIDO_PARCIAL"),
+    ("acolher os embargos de declaração, sem efeitos infringentes", "ACOLHIDO"),
+    ("rejeitar os embargos de declaração", "REJEITADO"),
+    ("rejeitar a preliminar e, no mérito, negar provimento ao recurso", "NEGADO"),
+    ("rejeitar a preliminar, vencida, neste ponto, a conselheira Maria, e, no mérito, negar provimento", "NEGADO"),
+    ("negar provimento, vencidos os Conselheiros A e B que votaram por dar provimento ao recurso", "NEGADO"),
+    ("acolher os embargos para alterar o dispositivo de: “não conhecer” para: “dar-lhe provimento”", "ACOLHIDO"),
+    ("dar parcial provimento ao recurso para reverter glosas, mantendo outras; negar provimento quanto ao frete",
+     "PROVIDO_PARCIAL"),
+    ("negar provimento ao recurso de ofício e dar parcial provimento ao recurso voluntário", "MISTO"),
     (None, "OUTRO"),
 ])
 def test_classificar_resultado(texto, esperado):
