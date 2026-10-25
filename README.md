@@ -30,13 +30,21 @@ carf gerenciais atualizar --workers 3            # baixa só o que mudou (ETag/h
 carf gerenciais desfechos tributo                # resultado OFICIAL por tributo/turma/ano/tema
 carf gerenciais estoque fase_processual          # acervo pendente no mês mais recente
 
-# 3) Busca e perguntas
-carf embed                                       # vetoriza ementas com o e5-small (~40 min para 85 mil)
+# 3) Matéria e teses (filtros estruturados), busca e perguntas
+carf enriquecer                                  # assunto + tese de nulidade/prescrição (acolhida/rejeitada), ~1 min
+carf embed                                       # vetoriza ementas com o e5-small (~25 docs/s)
+carf search "cerceamento de defesa" --assunto "classificação de mercadorias" --nulidade acolhida
 carf search "conceito de insumo" --ano 2025      # semântica e5 (padrão); --modo hibrido p/ números e citações
 carf stats turma --resultado                     # heurística sobre o texto da decisão
 carf ask "Qual a tendência de provimento em PIS/COFINS?"   # requer ANTHROPIC_API_KEY
 
-# 4) Qualidade e LGPD
+# 4) Painel e API para o escritório (ver docs/DEPLOY.md)
+python scripts/painel/exportar.py $CARF_DATA_DIR painel --ano-min 2018    # dados do painel HTML
+python scripts/painel/prontas.py  $CARF_DATA_DIR painel                   # pesquisas prontas (e5)
+carf serve --novo-token "Escritório X"           # token por escritório (grava só o hash)
+carf serve --painel painel                       # API + painel; sem log de consultas
+
+# 5) Qualidade e LGPD
 carf audit                                       # regras: nada detectável pode restar
 carf audit --profundo --n 300                    # detectores independentes, em amostra
 carf review amostra --n 100                      # gera planilha para revisão humana
@@ -67,6 +75,26 @@ e `carf gerenciais atualizar`.
 - **Armazenamento:** Parquet por ano de sessão; DuckDB consulta com deduplicação por `id`.
 - **Qualidade dos dados:** datas de sessão absurdas (ano -19, +191993) e anos como "0199" são
   descartados e sinalizados em `qualidade`. Campos multivalorados do Solr são normalizados.
+
+## Matéria e teses
+`carf enriquecer` grava `facets.parquet` (unido à view `acordaos`): `assunto` (cabeçalho "Assunto:" da ementa),
+`tese_nulidade` e `tese_prescricao` (ACOLHIDA, REJEITADA ou INDEFINIDA; vazio quando a ementa não trata do tema).
+A leitura é **da decisão primeiro** (ex.: "rejeitar a preliminar de nulidade"), com a ementa como reserva só se o
+tema está no título dela. Voto vencido é ignorado e "acolher preliminar de ilegitimidade" não vale como nulidade.
+Decadência ficou de fora de propósito: as ementas enunciam regras, não o resultado.
+Medição por leitura de acórdãos (nulidade, 2023+): REJEITADA acertou 33 de 33 em amostra nova e cerca de 17 de 20
+nas decididas só pela ementa; ACOLHIDA acertou 25 de 30 (2 erradas, 3 sem sinal explícito na decisão). **O recall do
+ACOLHIDA não foi medido** e a abstenção (INDEFINIDA) é de ~9% dos acórdãos que citam nulidade. Use como filtro de
+triagem e confira o trecho da decisão. Cerca de 18% dos acórdãos não têm "Assunto:" na ementa (formato antigo).
+
+## Painel, API e servidor
+- `scripts/painel/painel.html` é uma página única (abas Pesquisa, Tendências, Estoque, Boletim, Revisão LGPD). Lê
+  JSONs por ano gerados por `exportar.py`, busca por palavras no navegador (início da ementa, 230 caracteres) e,
+  quando serve a API, oferece busca por significado com o token do escritório.
+- `carf serve`: `POST /api/buscar` (semântica ou léxica + filtros), `GET /api/acordao/{id}`, `/api/tendencia`,
+  `/api/estoque`. Token por escritório (SHA-256 em `tokens.json`), limite de 60 consultas/min por token, sem
+  access log e sem registro do texto buscado. Instalação e rotina diária: `docs/DEPLOY.md`.
+- Minutas comerciais: `docs/comercial/PROPOSTA.md` e `CHECKLIST_REUNIAO.md` (valores são hipóteses).
 
 ## Anonimização (camadas)
 1. **Regras determinísticas** com validação de dígitos (CPF/CNPJ). Números de processo (todas as
@@ -117,6 +145,6 @@ e `carf gerenciais atualizar`.
 
 ## Testes
 ```bash
-pytest          # 151 testes, sem rede
+pytest          # 172 testes, sem rede
 ruff check src tests scripts
 ```

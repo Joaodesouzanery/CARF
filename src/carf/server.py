@@ -6,6 +6,7 @@ sem access log. O acesso exige token por escritório (guardado como SHA-256).
 """
 
 import hashlib
+import threading
 import hmac
 import json
 import time
@@ -13,6 +14,7 @@ from collections import defaultdict, deque
 from pathlib import Path
 
 from starlette.applications import Starlette
+from starlette.concurrency import run_in_threadpool
 from starlette.exceptions import HTTPException
 from starlette.requests import Request
 from starlette.responses import FileResponse, JSONResponse
@@ -77,7 +79,13 @@ def criar_app(data_dir: Path, painel_dir: Path | None = None, tokens: dict[str, 
             raise HTTPException(429, "muitas consultas; tente em um minuto")
         return nome
 
+    trava = threading.Lock()
+
     def semantico_pronto():
+        with trava:
+            return _semantico_pronto()
+
+    def _semantico_pronto():
         if estado["indice"] is None:
             from .embeddings import Indice, criar_embedder
             ind = Indice(data_dir, "e5-small").carregar()
@@ -98,6 +106,24 @@ def criar_app(data_dir: Path, painel_dir: Path | None = None, tokens: dict[str, 
     async def saude(_):
         return JSONResponse({"ok": True})
 
+    def executar_busca(q: str, filtros: dict, limite_n: int, modo: str) -> dict:
+        """Sincrona e pesada (modelo, matriz de vetores): roda em thread para não travar as outras consultas."""
+        c = con()
+        if not q:  # só filtros
+            where, params = consulta._where(filtros)
+            ids = [r[0] for r in c.execute(
+                f"SELECT id FROM acordaos WHERE {where} ORDER BY dt_sessao DESC LIMIT {limite_n}", params).fetchall()]
+            res = list(semantico._linhas(c, ids).values())
+        elif modo == "lexico" or semantico_pronto() is None:
+            res = semantico.buscar(c, q, filtros, limite_n, "lexico")
+            modo = "lexico"
+        else:
+            ind, emb = semantico_pronto()
+            res = semantico.buscar(c, q, filtros, limite_n, modo, ind, emb)
+        completo = semantico._linhas(c, [r["id"] for r in res])  # a busca léxica devolve menos campos
+        return {"modo": modo, "resultados": [
+            linha({**completo[r["id"]], "iguais": r.get("iguais", 1)}) for r in res if r["id"] in completo]}
+
     async def buscar(req: Request):
         autenticar(req)
         try:
@@ -115,21 +141,7 @@ def criar_app(data_dir: Path, painel_dir: Path | None = None, tokens: dict[str, 
                 filtros[k] = str(filtros[k]).upper()
         limite_n = max(1, min(int(corpo.get("limite", 20)), 50))
         modo = corpo.get("modo", "semantico")
-        c = con()
-        if not q:  # só filtros
-            ids = [r[0] for r in c.execute(
-                f"SELECT id FROM acordaos WHERE {consulta._where(filtros)[0]} ORDER BY dt_sessao DESC LIMIT {limite_n}",
-                consulta._where(filtros)[1]).fetchall()]
-            res = list(semantico._linhas(c, ids).values())
-        elif modo == "lexico" or (modo != "lexico" and semantico_pronto() is None):
-            res = semantico.buscar(c, q, filtros, limite_n, "lexico")
-            modo = "lexico"
-        else:
-            ind, emb = semantico_pronto()
-            res = semantico.buscar(c, q, filtros, limite_n, modo, ind, emb)
-        completo = semantico._linhas(c, [r["id"] for r in res])  # a busca léxica devolve menos campos
-        return JSONResponse({"modo": modo, "resultados": [
-            linha({**completo[r["id"]], "iguais": r.get("iguais", 1)}) for r in res if r["id"] in completo]})
+        return JSONResponse(await run_in_threadpool(executar_busca, q, filtros, limite_n, modo))
 
     async def acordao(req: Request):
         autenticar(req)

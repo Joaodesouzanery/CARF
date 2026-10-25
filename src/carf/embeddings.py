@@ -128,7 +128,9 @@ class Indice:
             return []
         sim = self.mat @ vetor.astype(np.float32)
         if permitidos is not None:
-            sim = np.where(np.isin(self.ids, list(permitidos)), sim, -np.inf)
+            # np.isin sobre ids em texto leva ~10 s com 70 mil vetores; pertinência em conjunto, ~10 ms
+            ok = np.fromiter((i in permitidos for i in self.ids), bool, len(self.ids))
+            sim = np.where(ok, sim, -np.inf)
         k = min(k, len(sim))
         top = np.argpartition(-sim, k - 1)[:k]
         top = top[np.argsort(-sim[top])]

@@ -34,6 +34,11 @@ def extrair_assunto(ementa: str | None) -> str | None:
     return a if a and len(a) <= 160 else None  # cabeçalho sem data de referência pega a ementa inteira
 
 
+def _corpo(ementa: str | None) -> str:
+    c = _DATAS.sub("", ementa or "", count=1) if re.match(r"\s*assunto", ementa or "", re.I) else (ementa or "")
+    return re.sub(r"\s+", " ", c).strip()
+
+
 def extrair_teses(ementa: str | None) -> str | None:
     """Frases-título em caixa alta que seguem o cabeçalho (ex.: 'NULIDADE. INOCORRÊNCIA.')."""
     corpo = _DATAS.sub("", ementa or "", count=1) if re.match(r"\s*assunto", ementa or "", re.IGNORECASE) else (ementa or "")
@@ -105,8 +110,11 @@ def classificar_tese(tema: str, ementa: str | None, decisao: str | None = None) 
         return "ACOLHIDA"
     if "prelimoutra" in d:
         return "INDEFINIDA"
-    if not t["mencao"].search(e[:900]):
-        return "INDEFINIDA"
+    # sem sinal na decisão, só vale a ementa se o tema está no título dela (as frases em caixa alta e o
+    # começo do texto); menção solta no meio de outra matéria não faz do acórdão um caso desse tema
+    titulo = _norm(_corpo(ementa))[:260]
+    if not t["mencao"].search(titulo):
+        return None if not t["mencao"].search(d) else "INDEFINIDA"
     ea, er = bool(t["em_acolhe"].search(e[:900])), bool(t["em_rejeita"].search(e[:900]))
     if ea and not er:
         return "ACOLHIDA"

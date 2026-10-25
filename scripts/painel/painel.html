@@ -221,7 +221,11 @@ function candidatos(ano, tok) {
 
 /* ---------- pesquisa ---------- */
 const NOMES_TESE = { 1: "acolhida", 2: "rejeitada" };
+let seq = 0, aborta = null;
 async function buscarServidor() {
+  const minha = ++seq;  // respostas antigas não podem sobrescrever a busca mais nova
+  if (aborta) aborta.abort();
+  aborta = new AbortController(); $("#mais").hidden = true;
   const tok = $("#tok").value.trim(); store.set("carf-token", tok);
   const f = {};
   if ($("#assunto").value !== "") f.assunto = META.assuntos[+$("#assunto").value];
@@ -230,16 +234,17 @@ async function buscarServidor() {
   if ($("#pre").value !== "0") f.tese_prescricao = NOMES_TESE[$("#pre").value];
   const lista = $("#lista"); lista.replaceChildren(el("div", "empty", "Buscando…"));
   try {
-    const r = await fetch("api/buscar", { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + tok }, body: JSON.stringify({ q: $("#q").value, filtros: f, limite: 30 }) });
+    const r = await fetch("api/buscar", { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + tok }, body: JSON.stringify({ q: $("#q").value, filtros: f, limite: 30 }), signal: aborta.signal });
     if (r.status === 401) { lista.replaceChildren(el("div", "empty", "Token inválido. Confira com quem administra o painel.")); return; }
     if (r.status === 429) { lista.replaceChildren(el("div", "empty", "Muitas consultas seguidas. Aguarde um minuto.")); return; }
     const d = await r.json();
+    if (minha !== seq) return;
     lista.replaceChildren();
     $("#cont").replaceChildren(el("b", "", String(d.resultados.length)), document.createTextNode(` acórdãos por ${d.modo === "lexico" ? "palavras" : "significado"}`));
     $("#mais").hidden = true; acha = [];
     d.resultados.forEach((x) => lista.appendChild(cardApi(x)));
     if (!d.resultados.length) lista.appendChild(el("div", "empty", "Nenhum acórdão com esses filtros."));
-  } catch (e) { lista.replaceChildren(el("div", "empty", "Não foi possível consultar o servidor.")); }
+  } catch (e) { if (e.name !== "AbortError") lista.replaceChildren(el("div", "empty", "Não foi possível consultar o servidor.")); }
 }
 
 function cardApi(x) {
@@ -259,7 +264,7 @@ function cardApi(x) {
 }
 
 function filtrar() {
-  if ($("#sem") && $("#sem").checked) { buscarServidor(); return; }
+  if ($("#sem") && $("#sem").checked) { clearTimeout(timerSrv); timerSrv = setTimeout(buscarServidor, 350); return; }
   const f = { nul: +$("#nul").value, pre: +$("#pre").value, res: $("#res").value, turma: $("#turma").value, assunto: $("#assunto").value };
   const toks = fold($("#q").value).split(/[^a-z0-9]+/).filter((t) => t.length > 1 && !STOP.has(t));
   const out = [];
@@ -325,7 +330,7 @@ function mais() {
   if (!acha.length) $("#lista").replaceChildren(el("div", "empty", "Nenhum acórdão com esses filtros. Tire um filtro ou marque mais anos."));
 }
 
-let timer; const agenda = () => { clearTimeout(timer); timer = setTimeout(filtrar, 160); };
+let timer, timerSrv; const agenda = () => { clearTimeout(timer); timer = setTimeout(filtrar, 160); };
 
 async function marcarAno(a, on) {
   if (on) { $("#anosHint").textContent = `carregando ${a}…`; try { await carregarAno(a); sel.add(a); } catch (e) { $("#anosHint").textContent = `erro ao carregar ${a}`; return; } $("#anosHint").textContent = ""; }
