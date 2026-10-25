@@ -1,70 +1,113 @@
 # CARF Intelligence
 
-Coleta acórdãos públicos do CARF, anonimiza antes de gravar e permite buscar, medir e fazer
-perguntas com citação da fonte. Pensado para um piloto de consultoria com escritórios tributaristas.
+Coleta acórdãos públicos do CARF, anonimiza **antes de gravar**, e permite buscar (lexical,
+semântica ou híbrida), medir resultados e fazer perguntas com citação da fonte. Também integra os
+dados abertos oficiais de **Julgamentos** e **Estoque** de processos. Pensado para um piloto de
+consultoria com escritórios tributaristas.
 
 ## Instalação
 ```bash
-uv venv --python 3.12 .venv && . .venv/bin/activate
-uv pip install -e ".[ner,ask,dev]"      # Python 3.11 ou 3.12
+scripts/setup.sh        # Python 3.12 + dependências com as versões fixadas do NER
+. .venv/bin/activate
 ```
 O NER (spaCy + `pt_core_news_lg`) usa versões fixadas de `murmurhash`/`preshed`/`cymem`: as mais
 novas quebram o carregamento do modelo (`OverflowError`). Sem NER o comando se recusa a rodar,
 salvo `--sem-ner` (apenas regras e contexto; recall muito menor, não usar em produção).
+Também há `Dockerfile` para rodar fora do ambiente de desenvolvimento.
 
-## Uso
+## Fluxo típico
 ```bash
 export CARF_DATA_DIR=./data
 
-carf sync --ano-min 2023            # carga completa do recorte (retoma sozinha se interrompida)
-carf sync --ano-min 2023 --incremental   # só o que foi indexado depois da última carga
-carf check --paginas                # há novidade? (saída 10 = sim) e vigia os PDFs gerenciais
-carf search "glosa despesas operacionais" --ano 2024
-carf stats turma --resultado        # distribuição de resultados (heurística)
-carf audit                          # varre a base atrás de identificadores
-carf ask "Qual a tendência de provimento em PIS/COFINS insumos?"   # requer ANTHROPIC_API_KEY
+# 1) Acórdãos. Camada leve (metadados + ementa + decisão), em paralelo: ~30 min para 2023+
+carf sync --ano-min 2023 --leve --workers 3      # retomável; `carf status` mostra o progresso
+carf check --paginas                             # há novidade? (saída 10 = sim)
+carf sync --ano-min 2023 --incremental           # traz só o que mudou (usa os mesmos filtros)
+carf texto 10006836                              # voto integral de um acórdão, anonimizado
+
+# 2) Dados abertos oficiais (sem token)
+carf gerenciais atualizar                        # baixa só o que mudou (ETag/hash) e ingere
+carf gerenciais desfechos tributo                # resultado OFICIAL por tributo/turma/ano/tema
+carf gerenciais estoque fase_processual          # acervo pendente no mês mais recente
+
+# 3) Busca e perguntas
+carf embed --modelo spacy                        # vetoriza ementas (e5-small/minilm: ver abaixo)
+carf search "conceito de insumo" --modo hibrido --ano 2025
+carf stats turma --resultado                     # heurística sobre o texto da decisão
+carf ask "Qual a tendência de provimento em PIS/COFINS?"   # requer ANTHROPIC_API_KEY
+
+# 4) Qualidade e LGPD
+carf audit                                       # regras: nada detectável pode restar
+carf audit --profundo --n 300                    # detectores independentes, em amostra
+carf review amostra --n 100                      # gera planilha para revisão humana
+carf review pontuar revisao/amostra-....csv      # taxa de vazamento com IC de Wilson
 ```
-Agende `carf check` (cron ou CI) e, se sair com 10, rode `carf sync --incremental`.
+Agende `carf check --paginas` (cron/CI) e, se sair com 10, rode `carf sync --incremental`
+e `carf gerenciais atualizar`.
 
 ## Como funciona
-- **Fonte:** índice Solr público de acórdãos (`acordaos.economia.gov.br`). Sincronização por
-  `cursorMark`, pausa entre requisições (`CARF_REQUEST_DELAY`, padrão 0,7 s), retentativas com
-  recuo exponencial e estado em `data/state.json`.
-- **Atualizações:** `dt_index_tdt` (momento da indexação) é a marca-d'água. A carga completa grava
-  um instantâneo *antes* de baixar, para nada indexado durante a carga se perder. O limite do
-  filtro é inclusivo e o indexador carimba lotes inteiros com o mesmo instante, então a
+- **Fonte dos acórdãos:** índice Solr público (`acordaos.economia.gov.br`), por `cursorMark`,
+  pausa entre requisições (`CARF_REQUEST_DELAY`), retentativas com recuo e estado em disco.
+  O campo `conteudo_txt` é só armazenado: a busca no servidor usa `_texto`. A busca principal é
+  **local** de propósito: as consultas de um advogado revelam a estratégia do cliente e não devem
+  ficar em log de servidor de terceiros.
+- **Camada leve × texto integral:** a carga leve guarda metadados, ementa e decisão (cerca de
+  1,7 mil caracteres por acórdão). O voto integral vem sob demanda (`carf texto`), anonimizado.
+  Isso torna a carga ~35x mais rápida que a do texto integral (o NER é o gargalo).
+- **Carga paralela:** o recorte é dividido em fatias disjuntas (ano × seção) com uma fatia residual
+  por exclusão, então a partição é completa mesmo quando as facetas do Solr erram a contagem.
+  Cada fatia tem estado próprio; uma fatia com erro não derruba as outras, e reexecutar retoma.
+- **Atualizações:** `dt_index_tdt` é a marca-d'água. A carga grava um instantâneo *antes* de baixar.
+  O limite do filtro é inclusivo e o indexador carimba lotes inteiros com o mesmo instante, então a
   incremental pula o que já está gravado na mesma versão (`id` + `dt_index`).
-- **Armazenamento:** Parquet por ano de sessão; DuckDB consulta com deduplicação por `id`
-  (`carf compact` remove versões antigas).
+- **Dados oficiais:** os arquivos de Julgamentos e Estoque são downloads públicos em `www.gov.br`.
+  Não há token: a API do portal dados.gov.br exige credencial, mas não é necessária. A lista de
+  recursos está em `src/carf/recursos_seed.json`; URLs previsíveis (ano/semestre novo) são testadas
+  a cada atualização. Anos antigos ficam em `carf.economia.gov.br` (precisa estar liberado na rede).
+- **Armazenamento:** Parquet por ano de sessão; DuckDB consulta com deduplicação por `id`.
 - **Qualidade dos dados:** datas de sessão absurdas (ano -19, +191993) e anos como "0199" são
-  descartados e sinalizados na coluna `qualidade`.
-- **PDF gerencial:** o monitor baixa o PDF de dados abertos gerenciais, guarda o hash e a data
-  "Atualização da apresentação" (via `pdftotext`, se instalado).
+  descartados e sinalizados em `qualidade`. Campos multivalorados do Solr são normalizados.
 
 ## Anonimização (camadas)
-1. Regras determinísticas com validação de dígitos (CPF/CNPJ); números de processo e decisão protegidos.
-2. NER em português para nomes, com filtro de vocabulário jurídico, aparo de títulos,
-   propagação de sobrenomes soltos e preservação de agentes públicos.
-3. Auditoria posterior e amostra humana. Detalhes e limites em `docs/lgpd/`.
+1. **Regras determinísticas** com validação de dígitos (CPF/CNPJ). Números de processo (todas as
+   variantes de formatação) e de decisão são protegidos. Conta bancária só com contexto de banco.
+2. **NER em português** para nomes, com: filtro de vocabulário jurídico; **vocabulário comum
+   derivado do corpus** (palavra que aparece em minúscula em muitos acórdãos não é nome);
+   aparo de títulos; propagação de sobrenomes soltos; **preservação de agentes públicos**
+   (relatores da base, quem vem após título judicial, quem é seguido de "Presidente"/"Redator").
+3. **Auditoria** (`carf audit`, `--profundo`) e **revisão humana** de amostra. Detalhes e limites em
+   `docs/lgpd/`.
 
-## Medições (dados reais, ver `docs/lgpd/REGISTRO_OPERACOES.md`)
-- NER sem filtros: ~40 máscaras de nome por documento, com muitos falsos positivos (PIS, COFINS,
-  "ônus da prova"). Com os filtros: ~6 por documento, majoritariamente pessoas e empresas.
-- **Desempenho:** ~0,7 s por documento (NER é o gargalo; 1 processo). O recorte 2023+ (85.710 docs)
-  levaria cerca de 16 h e o índice inteiro (587.779) cerca de 5 dias. Para escalar: paralelizar
-  em vários processos/máquinas ou começar por um recorte por matéria/seção.
-- **Conferência com o PDF gerencial 2026-09:** acórdãos + resoluções por ano do PDF ficam 3–5%
-  abaixo da contagem do índice (ex. 2023: 19.358 + 1.946 = 21.304 vs 22.477), o que indica
-  cobertura consistente; a diferença não foi explicada.
+## Medições (dados reais)
+- **Cobertura:** a carga leve de 2023+ trouxe 85.710 acórdãos distintos, igual ao `numFound` do
+  índice, e as contagens por ano batem com o índice. O índice tem 19.691 acórdãos+resoluções em
+  2025 contra 19.525 no CSV oficial (+0,85%); as 2.385 resoluções batem exatamente com o PDF gerencial.
+- **Classificação de resultado × resultado oficial** (`scripts/avaliar_resultado.py`, decisões com um
+  único recurso, 2025, três amostras separadas, a terceira não vista durante o ajuste): "OUTRO" entre
+  0,9% e 4,6%; acurácia geral entre 92,7% e 97,6%; quando decide, entre 97,8% e 98,6%.
+  Quando o ano tem CSV oficial, **use o resultado oficial** (`carf gerenciais desfechos`).
+- **Anonimização de nomes:** NER sem filtros ~40 máscaras/doc (muitas indevidas: PIS, COFINS,
+  "ônus da prova"); com os filtros e o vocabulário do corpus, em ementa+decisão: 12 máscaras em
+  300 acórdãos (0,18 por mil palavras), quase todas pessoas ou empresas; 2.006 menções a agentes
+  públicos preservadas. **Taxa de vazamento real:** depende da revisão humana (pendente).
+- **Desempenho:** texto integral ~0,7 s/doc/processo; camada leve ~50 docs/s com 3 processos.
 
 ## Limitações
-- Resultado (provido/negado/parcial) é heurística sobre o texto; entre 0% e ~40% cai em "OUTRO" conforme a turma (amostra de 400 acórdãos).
-- Não há busca semântica ainda (a busca exige todos os termos). Próximo passo natural.
-- Os conjuntos "Julgamentos" e "Estoque" do dados.gov.br não foram integrados: a API exige token.
-- `carf ask` não foi exercitado contra a API real (só o despacho das ferramentas é testado).
+- A anonimização reduz risco, **não o elimina**. `carf audit` usa as mesmas regras e o auditor
+  profundo usa NER do mesmo tipo: servem para achar regressões, não provam ausência de dado pessoal.
+- Nomes de doutrinadores, advogados e empresas com nome de pessoa podem ser mascarados;
+  agentes públicos não listados e sem título podem ser mascarados.
+- Busca semântica: com os vetores do spaCy o ganho sobre a léxica é pequeno. Os modelos e5/minilm
+  precisam do host `cas-server.xethub.hf.co` liberado. **Não há avaliação de qualidade conclusiva:**
+  o tema oficial (`concentracao_tematica`) classifica o tipo de lançamento, não o assunto da
+  ementa, e por isso não serve de gabarito. Use `scripts/julgamento_busca.py` (julgamento por
+  *pooling*) com revisão do advogado.
+- `carf ask` foi testado com cliente falso (laço de ferramentas, erros, limite de turnos), mas não
+  contra a API real (falta a chave).
+- Resultado heurístico (anos sem CSV oficial): vale a taxa acima; MISTO/OUTRO são abstenções.
 
 ## Testes
 ```bash
-pytest          # 69 testes, sem rede
-ruff check src tests
+pytest          # 131 testes, sem rede
+ruff check src tests scripts
 ```

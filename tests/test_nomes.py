@@ -95,3 +95,25 @@ def test_palavra_que_existe_em_minuscula_nao_e_nome():
     sp = Span(0, len("Ação Direta"), "NOME")
     assert refinar(texto, sp, palavras_minusculas(texto)) is None
     assert refinar("Maria Souza decidiu.", Span(0, 11, "NOME"), palavras_minusculas("Maria Souza decidiu.")) is not None
+
+
+def test_vocabulario_comum_do_corpus_descarta_titulos_em_caixa_alta():
+    from carf.privacy.ner import refinar, vocabulario_comum
+    from carf.privacy.rules import Span
+
+    assert "despesas" in vocabulario_comum() and "silva" not in vocabulario_comum()
+    for t in ("DESPESAS MÉDICAS", "Deduções Comprovadas", "Repercussão Geral"):
+        assert refinar(t, Span(0, len(t), "NOME")) is None, t
+    for t in ("Maria Souza", "JOÃO CARLOS PEREIRA", "Marcelo de Sousa Sateles"):
+        assert refinar(t, Span(0, len(t), "NOME")) is not None, t
+
+
+def test_nome_seguido_de_funcao_publica_e_oficial():
+    from carf.privacy.ner import refinar
+    from carf.privacy.rules import Span
+
+    t = "Pedro Sousa Bispo  Presidente Redator"
+    sp = refinar(t, Span(0, len(t), "NOME"))
+    assert sp.label == "OFICIAL" and t[sp.start : sp.end] == "Pedro Sousa Bispo"
+    t2 = "INTERESSE COMUM NA SITUAÇÃO QUE CONSTITUA"
+    assert refinar(t2, Span(0, len(t2), "NOME")) is None

@@ -66,7 +66,7 @@ class Store:
                       SELECT *, row_number() OVER (
                         PARTITION BY id
                         ORDER BY dt_index DESC NULLS LAST, processado_em DESC) AS rn
-                      FROM read_parquet('{glob}', union_by_name=true)) WHERE rn = 1"""
+                      FROM read_parquet('{glob}', union_by_name=true, hive_partitioning=false)) WHERE rn = 1"""
             )
         else:
             cols = ", ".join(f"NULL::{_duck(f.type)} AS {f.name}" for f in SCHEMA)

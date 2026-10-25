@@ -31,6 +31,7 @@ def amostrar(con, n: int, seed: int, saida: Path, ner=None, raio: int = 140) -> 
     """Gera `amostra-<data>.md` (para ler) e `.csv` (para marcar). Só texto já anonimizado."""
     from .qa import consulta
 
+    permitidos = auditoria.relatores_da_base(con)
     ids = [r[0] for r in con.execute("SELECT id FROM acordaos ORDER BY id").fetchall()]
     rng = random.Random(seed)
     escolhidos = sorted(rng.sample(ids, min(n, len(ids))))
@@ -43,7 +44,7 @@ def amostrar(con, n: int, seed: int, saida: Path, ner=None, raio: int = 140) -> 
         cur = con.execute("SELECT * FROM acordaos WHERE id = ?", [id_])
         r = dict(zip([c[0] for c in cur.description], cur.fetchone()))
         t = _texto(r)
-        suspeitos = auditoria.candidatos_vazamento(t, ner)
+        suspeitos = auditoria.candidatos_vazamento(t, ner, permitidos)
         palavras = len(t.split())
         mascaras = len(_MASCARA.findall(t))
         md += [f"## {id_}: {consulta.citacao(r)}", f"palavras: {palavras} | máscaras: {mascaras}\n"]

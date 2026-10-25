@@ -2,6 +2,8 @@
 
 import re
 import unicodedata
+from functools import lru_cache
+from pathlib import Path
 
 from .rules import Span
 
@@ -14,6 +16,7 @@ BORDA = HONORIFICOS | {
     "desembargador", "desembargadora", "juiz", "juiza", "doutor", "doutora", "professor",
     "professora", "senhor", "senhora", "procurador", "procuradora", "ministro", "ministra",
     "presidente", "rel", "fl", "fls", "r", "c", "autor", "autora", "advogado", "advogada",
+    "redator", "redatora", "suplente", "designado", "designada",
 }
 # Vocabulário jurídico-tributário: se aparece dentro de uma entidade, ela não é nome de pessoa.
 JURIDICO = {
@@ -33,6 +36,12 @@ JURIDICO = {
     "decisao", "diligencia", "preliminar", "merito", "recorrente", "recorrida", "recorrido",
     "autuacao", "notificacao", "intimacao", "pedido", "capitulo", "titulo", "secretaria",
 }
+# Palavras gramaticais curtas que não contam ao decidir se uma entidade é só vocabulário comum.
+GRAMATICAIS = {"na", "no", "nas", "nos", "que", "em", "por", "para", "com", "sem", "ao", "aos", "um",
+               "uma", "se", "ou", "como", "pela", "pelo", "sob", "sobre", "ante", "apos"}
+# Função pública depois do nome ("Fulano - Presidente Redator"): também não se mascara.
+FUNCAO_POS = {"presidente", "relator", "relatora", "redator", "redatora", "suplente", "designado",
+              "designada", "conselheiro", "conselheira"}
 # Quem vem precedido de um destes títulos atua em função pública: não se mascara.
 OFICIAIS = {
     "ministro", "ministra", "min", "conselheiro", "conselheira", "desembargador",
@@ -42,6 +51,13 @@ OFICIAIS = {
 SUFIXOS = {"filho", "neto", "junior", "sobrinho", "segundo", "primeiro"}
 
 _TOKEN = re.compile(r"[^\W\d_]+(?:[-'][^\W\d_]+)*")
+
+
+@lru_cache(maxsize=1)
+def vocabulario_comum() -> frozenset[str]:
+    """Palavras que aparecem em minúscula em muitos acórdãos (gerado por scripts/gerar_vocabulario.py)."""
+    arq = Path(__file__).with_name("vocab_comum.txt")
+    return frozenset(arq.read_text(encoding="utf-8").split()) if arq.exists() else frozenset()
 
 
 def _sem_acento(s: str) -> str:
@@ -71,13 +87,14 @@ def refinar(text: str, sp: Span, comuns: set[str] | None = None) -> Span | None:
         oficial |= toks[0][2] in OFICIAIS
         toks.pop(0)
     while toks and (toks[-1][2] in BORDA or toks[-1][2] in PARTICULAS):
+        oficial |= toks[-1][2] in FUNCAO_POS
         toks.pop()
     if len(toks) < 2 or any(t[2] in JURIDICO for t in toks):
         return None
-    if comuns is not None:
-        nomes = [t[3].lower() for t in toks if t[2] not in PARTICULAS]
-        if all(n in comuns for n in nomes):
-            return None
+    nomes = [t[3].lower() for t in toks if t[2] not in PARTICULAS and t[2] not in GRAMATICAIS]
+    conhecidas = vocabulario_comum() | (comuns or frozenset())
+    if all(n in conhecidas for n in nomes):  # só palavras comuns (ou só gramaticais)
+        return None
     return Span(toks[0][0], toks[-1][1], "OFICIAL" if oficial else "NOME")
 
 
@@ -94,7 +111,7 @@ def propagar(
         for m in _TOKEN.finditer(text[sp.start : sp.end]):
             w, n = m.group(), _sem_acento(m.group())
             if (len(w) >= 4 and n not in PARTICULAS | BORDA | JURIDICO | SUFIXOS and w[0].isupper()
-                    and w.lower() not in (comuns or ())):
+                    and w.lower() not in (comuns or ()) and w.lower() not in vocabulario_comum()):
                 palavras.add(w)
     if not palavras:
         return []

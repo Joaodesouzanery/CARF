@@ -130,6 +130,10 @@ def cmd_compact(args):
 def cmd_gerenciais(args):
     from .qa import gerenciais as qg
 
+    if args.acao == "reingerir":
+        anon = None if args.sem_anonimizar else _anonimizador(args)
+        print(json.dumps(gerenciais.reingerir(config.DATA_DIR, anon), ensure_ascii=False, indent=2))
+        return
     if args.acao == "atualizar":
         anon = None if args.sem_anonimizar else _anonimizador(args)
         print(json.dumps(gerenciais.atualizar(config.DATA_DIR, anon), ensure_ascii=False, indent=2))
@@ -188,7 +192,7 @@ def main(argv=None):
     t.set_defaults(fn=cmd_stats)
 
     g = sub.add_parser("gerenciais", help="dados abertos oficiais: Julgamentos e Estoque")
-    g.add_argument("acao", choices=["atualizar", "desfechos", "estoque"])
+    g.add_argument("acao", choices=["atualizar", "reingerir", "desfechos", "estoque"])
     g.add_argument("por", nargs="?", default="tributo")
     g.add_argument("--sem-ner", action="store_true")
     g.add_argument("--manter-cnpj", action="store_true")

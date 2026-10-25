@@ -89,3 +89,12 @@ def test_pontuar(tmp_path):
     assert r["taxa_docs_com_vazamento"] == 0.5 and r["vazamentos_por_mil_palavras"] == pytest.approx(0.75)
     assert r["nomes_remanescentes"] == 2 and r["taxa_mascara_indevida"] == pytest.approx(4 / 40)
     json.dumps(r)  # serializável para o registro
+
+
+def test_relator_conhecido_nao_e_vazamento():
+    from carf.privacy.ner import Allowlist
+
+    ner = NomesFalso(["Paulo Jakson da Silva Lucas", "Maria Souza"])
+    texto = "Votou Paulo Jakson da Silva Lucas; pagou Maria Souza."
+    achados = candidatos_vazamento(texto, ner, Allowlist(["PAULO JAKSON DA SILVA LUCAS"]))
+    assert achados == ["nome: Maria Souza"]

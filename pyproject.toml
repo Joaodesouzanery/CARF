@@ -42,3 +42,6 @@ pythonpath = ["src"]
 [tool.ruff]
 line-length = 100
 src = ["src", "tests"]
+
+[tool.setuptools.package-data]
+carf = ["recursos_seed.json", "privacy/vocab_comum.txt"]

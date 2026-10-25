@@ -117,3 +117,13 @@ def test_campos_multivalorados_nao_quebram(anon):
     r = montar_linha(d, anon, __import__("datetime").datetime(2026, 1, 1))
     assert r["numero_decisao"] == "1301-000001" and r["turma"] == "T1"
     assert r["ementa"].startswith("Parte 1.\nParte 2.") and r["ano"] == 2022
+
+
+def test_coluna_ano_continua_inteira_com_particao_desconhecida(tmp_path, anon):
+    # a pasta `ano=desconhecido` não pode virar texto na coluna `ano`
+    docs = [doc(1), doc(2, ano_sessao_s="0199", dt_sessao_tdt="+191993-07-28T00:00:00Z")]
+    Store(tmp_path).write([montar_linha(d, anon, __import__("datetime").datetime(2026, 1, 1)) for d in docs])
+    con = Store(tmp_path).connect()
+    assert con.execute("select typeof(ano) from acordaos limit 1").fetchone()[0] == "INTEGER"
+    assert con.execute("select count(*) from acordaos where ano is null").fetchone()[0] == 1
+    assert con.execute("select max(ano) from acordaos").fetchone()[0] == 2022

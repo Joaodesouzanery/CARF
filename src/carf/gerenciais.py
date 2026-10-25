@@ -199,3 +199,19 @@ def atualizar(data_dir: Path, anon=None, session=None, incluir_candidatos=True, 
     raiz.mkdir(parents=True, exist_ok=True)
     est_path.write_text(json.dumps(estado, indent=1, ensure_ascii=False))
     return resumo
+
+
+def reingerir(data_dir: Path, anon=None, log=print) -> list[str]:
+    """Reprocessa os ZIPs já baixados (sem rede), por exemplo após melhorar a anonimização."""
+    raiz = data_dir / "gerenciais"
+    feitos = []
+    for z in sorted((raiz / "raw").glob("*.zip")):
+        if z.name.startswith("carf_julgamentos_"):
+            alvo = ingerir_julgamentos(z, raiz / "julgamentos", anon)
+        elif "estoque" in z.name.lower():
+            alvo = ingerir_estoque(z, raiz / "estoque")
+        else:
+            continue
+        log(f"{z.name} -> {alvo.name}")
+        feitos.append(z.name)
+    return feitos

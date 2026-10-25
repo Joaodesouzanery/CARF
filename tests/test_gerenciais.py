@@ -146,3 +146,17 @@ def test_atualizar_ponta_a_ponta(tmp_path):
     assert r["novos"] == ["carf_julgamentos_2025.zip"] and r["ausentes"] > 0
     assert json.loads((tmp_path / "d/gerenciais/estado.json").read_text())
     assert g.atualizar(tmp_path / "d", session=Sess(), log=lambda m: None)["inalterados"] == 1
+
+
+def test_reingerir_aplica_anonimizador_sem_rede(tmp_path):
+    raiz = tmp_path / "gerenciais"
+    (raiz / "raw").mkdir(parents=True)
+    zip_de(raiz / "raw", "carf_julgamentos_2025.zip", JULG)
+    # primeira passada SEM anonimizar; depois reingere com anonimizador
+    g.reingerir(tmp_path, None, log=lambda m: None)
+    import pandas as pd
+
+    p = raiz / "julgamentos" / "julgamentos_2025.parquet"
+    assert "529.982.247-25" in pd.read_parquet(p)["texto_ementa"][0]
+    assert g.reingerir(tmp_path, Anonymizer(), log=lambda m: None) == ["carf_julgamentos_2025.zip"]
+    assert "529.982.247-25" not in pd.read_parquet(p)["texto_ementa"][0]

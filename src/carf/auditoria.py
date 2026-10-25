@@ -30,7 +30,7 @@ _SR_NOME = re.compile(r"\b(?:Sr|Sra)\.?\s+(?!\[)[A-ZÁÉÍÓÚÂÊÔÃÕÇ][\wá
 _PROCESSO = re.compile(r"\d{4,5}[.\-]?\d{3}[.\-]?\d{3}/\d{4}-\d{2}|\d{17}")
 
 
-def candidatos_vazamento(texto: str, ner=None) -> list[str]:
+def candidatos_vazamento(texto: str, ner=None, permitidos=None) -> list[str]:
     """Trechos que ainda parecem dado pessoal num texto JÁ anonimizado.
 
     Usa regex frouxos (não os da anonimização) e, se houver, um NER cujas entidades passam pelo
@@ -49,12 +49,22 @@ def candidatos_vazamento(texto: str, ner=None) -> list[str]:
         comuns = palavras_minusculas(texto)
         for sp in ner.detectar(texto):
             ref = refinar(texto, Span(sp.start, sp.end, "NOME"), comuns)
-            if ref and ref.label == "NOME" and "[" not in texto[ref.start : ref.end]:
-                achados.append(f"nome: {texto[ref.start : ref.end]}")
+            nome = texto[ref.start : ref.end] if ref else ""
+            if ref and ref.label == "NOME" and "[" not in nome and not (permitidos and permitidos.permite(nome)):
+                achados.append(f"nome: {nome}")
     return achados
 
 
+def relatores_da_base(con):
+    """Agentes públicos (relatores) conhecidos na base: não contam como vazamento."""
+    from .privacy.ner import Allowlist
+
+    return Allowlist(r[0] for r in con.execute(
+        "SELECT DISTINCT relator FROM acordaos WHERE relator IS NOT NULL").fetchall())
+
+
 def auditar_profundo(con, n: int = 200, seed: int = 1, ner=None) -> dict:
+    permitidos = relatores_da_base(con)
     ids = [r[0] for r in con.execute("SELECT id FROM acordaos ORDER BY id").fetchall()]
     amostra = random.Random(seed).sample(ids, min(n, len(ids)))
     por_tipo: Counter = Counter()
@@ -62,7 +72,7 @@ def auditar_profundo(con, n: int = 200, seed: int = 1, ner=None) -> dict:
     docs_com = 0
     for id_ in amostra:
         row = con.execute(f"SELECT {', '.join(COLUNAS)} FROM acordaos WHERE id = ?", [id_]).fetchone()
-        achados = candidatos_vazamento("\n".join(t for t in row if t), ner)
+        achados = candidatos_vazamento("\n".join(t for t in row if t), ner, permitidos)
         docs_com += bool(achados)
         for a in achados:
             tipo = a.split(":")[0]

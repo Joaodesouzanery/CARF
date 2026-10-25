@@ -20,7 +20,11 @@ Dado público não é dado livre: a finalidade e a minimização continuam exig�
 |---|---|
 | Identificadores diretos mascarados antes de gravar (CPF, CNPJ, e-mail, telefone, CEP, RG, título de eleitor, CNH, PIS/NIT, conta bancária, placa) | `privacy/rules.py` |
 | Nomes de pessoas físicas mascarados (NER + regras de contexto + propagação de sobrenome) | `privacy/ner.py` |
-| Agentes públicos preservados: relatores (lista oficial do índice) e quem vem após título judicial (ministro, conselheiro, desembargador, juiz, relator) | `privacy/ner.py` |
+| Termos jurídicos e vocabulário comum (derivado do corpus) não são tratados como nome | `privacy/vocab_comum.txt` |
+| Camada leve: o voto integral não é guardado; só sob demanda, anonimizado | `sync.py`, `texto.py` |
+| Busca principal local: as consultas do advogado não vão para servidor de terceiros | `qa/semantico.py` |
+| Revisão humana de amostra, com taxa de vazamento e intervalo de confiança | `review.py` |
+| Agentes públicos preservados: relatores (lista oficial do índice), quem vem após título judicial (ministro, conselheiro, desembargador, juiz, relator) e quem é seguido de função ("Presidente", "Redator") | `privacy/ner.py` |
 | Texto bruto **nunca** gravado em disco; só o texto limpo | `sync.py` |
 | Números de processo e de decisão preservados (públicos; necessários para citação) | `privacy/rules.py` |
 | Estatística por relator só com amostra mínima (30 acórdãos) | `qa/consulta.py` |
@@ -36,7 +40,12 @@ Dado público não é dado livre: a finalidade e a minimização continuam exig�
 - Conta bancária só é mascarada com contexto bancário próximo ("agência", "c/c", nome de banco).
 - `carf audit` usa as mesmas regras da anonimização: serve para detectar regressão, **não prova**
   ausência de dado pessoal. A qualidade é medida por amostragem humana (seção 6).
-- A classificação de resultado (provido/negado/...) é heurística sobre o texto da decisão.
+- A classificação de resultado (provido/negado/...) é heurística sobre o texto da decisão; quando o
+  ano tem CSV oficial de Julgamentos, usa-se o resultado oficial.
+- Agentes públicos não listados e sem título (ex.: ministro do STJ citado só pelo sobrenome) podem
+  ser mascarados; é a escolha conservadora.
+- Conjuntos oficiais (Julgamentos/Estoque): não trazem nome de contribuinte; a ementa de
+  Julgamentos passa pelo mesmo anonimizador.
 
 ## 5. Relatores e conselheiros
 Atuação em julgamento é pública. Mesmo assim: apresentar apenas estatísticas agregadas de
