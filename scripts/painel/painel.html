@@ -103,6 +103,7 @@ svg .lbl { fill: var(--ink); font-weight: 600; }
     <button role="tab" aria-selected="false" data-t="estoque">Estoque</button>
     <button role="tab" aria-selected="false" data-t="boletim">Boletim</button>
     <button role="tab" aria-selected="false" data-t="revisao">Revisão LGPD</button>
+    <button role="tab" aria-selected="false" data-t="sobre">Sobre</button>
   </nav>
 </header>
 <main>
@@ -114,7 +115,7 @@ svg .lbl { fill: var(--ink); font-weight: 600; }
   <div class="grid">
     <aside class="filters">
       <div><label for="q">Palavras</label><input id="q" class="q" type="search" placeholder="ex.: cerceamento de defesa" autocomplete="off"></div>
-      <div><span class="lab">Anos</span><div class="years" id="anos"></div><div class="hint" id="anosHint"></div></div>
+      <div><span class="lab">Anos</span><div class="years" id="anos"></div><div class="hint" id="anosHint"></div><button class="b" id="todosAnos" type="button" style="margin-top:8px">Marcar todos os anos</button></div>
       <div id="srv" hidden>
         <label style="display:flex;gap:8px;align-items:center;text-transform:none;letter-spacing:0;font-size:14px;color:var(--ink)"><input type="checkbox" id="sem"> Buscar por significado (servidor)</label>
         <input id="tok" type="search" placeholder="Token do escritório" autocomplete="off" style="margin-top:8px" hidden>
@@ -165,12 +166,18 @@ svg .lbl { fill: var(--ink); font-weight: 600; }
 <section id="revisao" hidden>
   <h2>Revisão da anonimização</h2>
   <p class="lead">Para cada acórdão, leia o trecho e marque o que sobrou ou o que foi mascarado sem necessidade. O resultado calcula a taxa de vazamento com intervalo de confiança. Suas marcações ficam neste navegador.</p>
+  <p class="note" style="margin-bottom:14px">As marcações já preenchidas vêm de uma revisão feita por IA sobre o trecho mostrado (cerca de 600 caracteres por acórdão, ementa e decisão). Não substitui revisão humana: confira e corrija.</p>
   <div class="panel">
     <div class="kpis" id="rkpi"></div>
     <button class="b primary" id="rcopy" type="button">Copiar resultado (CSV)</button>
     <span class="hint" id="rmsg" style="margin-left:10px"></span>
   </div>
   <div id="rlist"></div>
+</section>
+
+<section id="sobre" hidden>
+  <h2>Sobre este painel</h2>
+  <div class="panel" id="sobreCorpo"></div>
 </section>
 
 </main>
@@ -192,7 +199,13 @@ const sel = new Set();      // anos marcados
 let acha = [], mostrando = 0;
 
 /* ---------- carga ---------- */
-async function getJson(p) { if (window.__DADOS && p in window.__DADOS) return window.__DADOS[p]; const r = await fetch(p); if (!r.ok) throw new Error(p + " " + r.status); return r.json(); }
+async function getJson(p) {
+  if (window.__DADOS && p in window.__DADOS) return window.__DADOS[p];
+  if (window.__GZ && p in window.__GZ) {  // arquivo único: o ano vem em gzip/base64 e só é aberto quando pedido
+    const bin = Uint8Array.from(atob(window.__GZ[p]), (c) => c.charCodeAt(0));
+    return JSON.parse(await new Response(new Blob([bin]).stream().pipeThrough(new DecompressionStream("gzip"))).text());
+  }
+  const r = await fetch(p); if (!r.ok) throw new Error(p + " " + r.status); return r.json(); }
 
 function indexar(rows) {
   const idx = new Map();
@@ -353,6 +366,11 @@ function montarFiltros() {
   $("#q").addEventListener("input", () => { if ($("#sem") && $("#sem").checked) return; agenda(); });
   $("#q").addEventListener("keydown", (e) => { if (e.key === "Enter" && $("#sem") && $("#sem").checked) filtrar(); });
   $("#mais").addEventListener("click", mais);
+  $("#todosAnos").addEventListener("click", async () => {
+    const b = $("#todosAnos"); b.disabled = true;
+    for (const a of [...META.anos].reverse()) { const i = $("#ano" + a); if (i && !i.checked) { b.textContent = `Carregando ${a}…`; i.checked = true; await marcarAno(a, true); } }
+    b.textContent = "Todos os anos marcados"; b.disabled = false;
+  });
   $("#limpar").addEventListener("click", () => { $("#q").value = ""; ["#nul", "#pre"].forEach((s) => ($(s).value = "0")); ["#res", "#turma", "#assunto"].forEach((s) => ($(s).value = "")); filtrar(); });
   $("#copiar").addEventListener("click", async () => {
     const t = acha.slice(0, 200).map(citacao).join("\n");
@@ -485,10 +503,12 @@ function resumoRev() {
 function montarRevisao() {
   const box = $("#rlist");
   REVISAO.forEach((r) => {
+    if (!estado[r.id] && r.ia) estado[r.id] = { nome: !!r.ia.nome, ident: !!r.ia.ident, indevida: !!r.ia.indevida, ok: true, ia: true };
     const e = (estado[r.id] = estado[r.id] || {});
     const d = el("div", "rev" + (e.ok ? " feito" : ""));
     d.appendChild(el("h3", "", `${r.id} · ${r.cit}`));
     d.appendChild(el("div", "hint", `${r.palavras} palavras · ${r.mascaras} máscaras aplicadas`));
+    if (r.ia) d.appendChild(el("div", "chips", "")).appendChild(el("span", "chip " + (r.ia.nome || r.ia.ident ? "bad" : r.ia.indevida ? "warn" : "ok"), "Revisão por IA: " + (r.ia.obs || "").replace("revisão por IA: ", "")));
     if (r.ctx.length) { const b = el("blockquote", "", "Máscaras: " + r.ctx.join("  |  ")); d.appendChild(b); }
     d.appendChild(el("blockquote", "", r.trecho));
     const ch = el("div", "checks");
@@ -504,6 +524,30 @@ function montarRevisao() {
     try { await navigator.clipboard.writeText(linhas.join("\n")); $("#rmsg").textContent = "CSV copiado. Cole numa planilha."; } catch (e) { $("#rmsg").textContent = "Não foi possível copiar."; }
   });
   resumoRev();
+}
+
+function montarSobre() {
+  const total = Object.values(META.n).reduce((a, b) => a + b, 0), c = $("#sobreCorpo");
+  const sec = (t, itens) => { c.appendChild(el("h2", "", t)); const u = el("ul"); u.style.cssText = "max-width:78ch;padding-left:20px"; itens.forEach((x) => u.appendChild(el("li", "", x))); c.appendChild(u); };
+  sec("O que há aqui", [
+    `${fmt(total)} acórdãos do índice público do CARF, de ${META.anos[0]} a ${META.anos[META.anos.length - 1]}, com ementa e decisão anonimizadas.`,
+    "Estatísticas oficiais de Julgamentos (2012 a 2025) e do Estoque de processos, dos dados abertos do CARF.",
+    "Filtros de matéria, tese de nulidade e de prescrição, colegiado, ano e resultado.",
+  ]);
+  sec("O que não há", [
+    "Acórdãos anteriores a 2018 (só a estatística oficial). O voto integral não está aqui; abra o PDF oficial pelo link de cada resultado.",
+    "A busca por palavras olha o início da ementa (cerca de 230 caracteres). A busca por significado exige o servidor.",
+    "Cerca de 13% dos acórdãos não têm a linha “Assunto” e ficam fora do filtro de matéria.",
+  ]);
+  sec("Como ler as leituras automáticas", [
+    "Tese (nulidade, prescrição) e resultado são lidos do texto da decisão por regras. Na amostra medida, “rejeitada” acertou 33 de 33; “acolhida” acertou 25 de 30. Quando os sinais se contradizem, aparece “indefinida”.",
+    "Use como triagem. Confira o acórdão antes de citar. Isto não é parecer jurídico.",
+  ]);
+  sec("Dados pessoais", [
+    "Os textos foram anonimizados antes de entrar na base: CPF, CNPJ, endereços e nomes de pessoas físicas são mascarados; nomes de conselheiros e relatores são mantidos.",
+    "A aba Revisão LGPD mostra a amostra de 100 acórdãos e a taxa de vazamento medida. A anonimização reduz o risco, não o elimina.",
+  ]);
+  c.appendChild(el("p", "hint", `Gerado em ${META.gerado || "data não informada"}.`));
 }
 
 /* ---------- início ---------- */
@@ -525,8 +569,8 @@ function abas() {
     try { PRONTAS = await getJson("prontas.json"); } catch (e) {}
     const total = Object.values(META.n).reduce((a, b) => a + b, 0);
     $("#sub").textContent = `${fmt(total)} acórdãos de ${META.anos[0]} a ${META.anos[META.anos.length - 1]} · texto anonimizado`;
-    try { const h = await fetch("api/saude"); if (h.ok && (await h.json()).ok) { $("#srv").hidden = false; $("#tok").value = store.get("carf-token") || ""; $("#sem").addEventListener("change", () => { $("#tok").hidden = !$("#sem").checked; filtrar(); }); } } catch (e) { /* sem servidor: só a busca por palavras */ }
-    montarFiltros(); montarProntas(); montarTend(); montarEstoque(); montarRevisao();
+    try { if (location.protocol === "file:") throw new Error("arquivo local"); const h = await fetch("api/saude"); if (h.ok && (await h.json()).ok) { $("#srv").hidden = false; $("#tok").value = store.get("carf-token") || ""; $("#sem").addEventListener("change", () => { $("#tok").hidden = !$("#sem").checked; filtrar(); }); } } catch (e) { /* sem servidor: só a busca por palavras */ }
+    montarFiltros(); montarProntas(); montarTend(); montarEstoque(); montarRevisao(); montarSobre();
     const ult = META.anos[META.anos.length - 1];
     await marcarAno(ult, true); $("#ano" + ult).checked = true;
     montarBoletim();

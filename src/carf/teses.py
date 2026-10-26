@@ -35,7 +35,7 @@ def extrair_assunto(ementa: str | None) -> str | None:
 
 
 def _corpo(ementa: str | None) -> str:
-    c = _DATAS.sub("", ementa or "", count=1) if re.match(r"\s*assunto", ementa or "", re.I) else (ementa or "")
+    c = _DATAS.sub("", ementa or "", count=1) if re.match(r"\s*assunto", ementa or "", re.IGNORECASE) else (ementa or "")
     return re.sub(r"\s+", " ", c).strip()
 
 

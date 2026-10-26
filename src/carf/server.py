@@ -6,9 +6,9 @@ sem access log. O acesso exige token por escritório (guardado como SHA-256).
 """
 
 import hashlib
-import threading
 import hmac
 import json
+import threading
 import time
 from collections import defaultdict, deque
 from pathlib import Path

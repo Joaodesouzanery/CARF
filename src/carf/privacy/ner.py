@@ -75,6 +75,9 @@ def palavras_minusculas(text: str) -> set[str]:
     return set(re.findall(r"(?<![\w])[a-zà-ÿ]{3,}(?![\w])", text))
 
 
+_FUNCAO_APOS = re.compile(r"[\s,]*\(\s*(?:substitut|suplente|convocad|relator|president|redator)", re.IGNORECASE)
+
+
 def refinar(text: str, sp: Span, comuns: set[str] | None = None) -> Span | None:
     """Apara títulos/marcadores das bordas e descarta o que não parece nome de pessoa.
 
@@ -95,6 +98,8 @@ def refinar(text: str, sp: Span, comuns: set[str] | None = None) -> Span | None:
     conhecidas = vocabulario_comum() | (comuns or frozenset())
     if all(n in conhecidas for n in nomes):  # só palavras comuns (ou só gramaticais)
         return None
+    # função pública logo depois do nome, fora da entidade: "Fulano (substituto[a] integral)"
+    oficial |= bool(_FUNCAO_APOS.match(text[toks[-1][1] : toks[-1][1] + 40]))
     return Span(toks[0][0], toks[-1][1], "OFICIAL" if oficial else "NOME")
 
 

@@ -139,3 +139,13 @@ def test_nome_em_caixa_alta_apos_sr_e_mascarado_no_pipeline():
     anon = Anonymizer(nomes=NomesPorContexto())
     out, _ = anon.anonymize("IMPUTAÇÃO DEVIDA. Srs. GLEDERSON TONI LOPES NABHAN e JEFERSON TONI LOPES NABHAN. Fim.")
     assert out == "IMPUTAÇÃO DEVIDA. Srs. [NOME] e [NOME]. Fim."
+
+
+def test_conselheiro_substituto_nao_e_mascarado():
+    from carf.privacy.ner import refinar
+    from carf.privacy.rules import Span
+
+    t = "conselheiros Ana Souza Lima (substituto[a] integral), Pedro Alves"
+    assert refinar(t, Span(14, 29, "NOME")).label == "OFICIAL"
+    t2 = "pagou a Ana Souza Lima por serviços"
+    assert refinar(t2, Span(8, 22, "NOME")).label == "NOME"

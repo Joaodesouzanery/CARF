@@ -88,6 +88,8 @@ ACOLHIDA não foi medido** e a abstenção (INDEFINIDA) é de ~12% dos acórdão
 triagem e confira o trecho da decisão. Cerca de 18% dos acórdãos não têm "Assunto:" na ementa (formato antigo).
 
 ## Painel, API e servidor
+- **Um arquivo só:** `python scripts/painel/exportar_html.py DATA out.html --compactar --limite-mb 60 --revisao ... --revisao-csv ... --prontas ...`
+  gera um HTML com todos os acórdãos (232 mil, ~21 MB, gzip por ano), que abre por duplo clique em Chrome/Edge/Firefox/Safari 16.4+.
 - `scripts/painel/painel.html` é uma página única (abas Pesquisa, Tendências, Estoque, Boletim, Revisão LGPD). Lê
   JSONs por ano gerados por `exportar.py`, busca por palavras no navegador (início da ementa, 230 caracteres) e,
   quando serve a API, oferece busca por significado com o token do escritório.
@@ -125,6 +127,7 @@ triagem e confira o trecho da decisão. Cerca de 18% dos acórdãos não têm "A
 - **Qualidade dos dados oficiais:** o rótulo de tributo muda entre anos ("COFINS" x "COFINS - CONTRIBUIÇÃO
   PARA O FINANCIAMENTO..."); fica a sigla normalizada (`tributo`) e o original (`tributo_original`).
   Até 2017 há muitos "não informado" (~48 mil registros no total).
+- **Revisão por IA da amostra de 100 acórdãos (2023+, trecho de ~600 caracteres de ementa/decisão, `revisao/revisao-IA-preenchida-s1.csv`):** 0 com dado pessoal visível (IC 95%: 0% a 3,7%); 13 com máscara indevida, quase todas conselheiros substitutos ("Fulano (substituto[a] integral)"), já corrigido na regra para os próximos textos (a base atual mantém essas máscaras: erro no lado seguro). Cobre só o trecho exibido, não o voto integral, e **não substitui revisão humana**.
 - **Pré-revisão por IA de 100 acórdãos** (antes da correção das listas de nomes): 1 vazamento (2 nomes) em
   100 documentos (IC 95%: 0,2% a 5,4%), já corrigido. **Não substitui a revisão humana.**
 - **Desempenho:** texto integral ~0,7 s/doc/processo; camada leve ~50 docs/s com 3 processos.

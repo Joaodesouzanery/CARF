@@ -9,6 +9,7 @@ import json
 import re
 import unicodedata
 from collections import Counter
+from datetime import date
 from pathlib import Path
 
 from carf.qa import consulta
@@ -83,7 +84,7 @@ def exportar_anos(con, saida: Path, anos_min: int, anos_max: int = 9999, filtro_
         (d / f"ano-{ano}.json").write_text(json.dumps({"cols": COLS, "rows": rows}, ensure_ascii=False, separators=(",", ":")))
     meta = {"anos": sorted(por_ano), "n": {str(a): len(r) for a, r in por_ano.items()},
             "turmas": list(turmas), "assuntos": list(assuntos), "link": LINK,
-            "teses": ["", "acolhida", "rejeitada", "indefinida"]}
+            "teses": ["", "acolhida", "rejeitada", "indefinida"], "gerado": date.today().strftime("%d/%m/%Y")}
     (saida / "meta.json").write_text(json.dumps(meta, ensure_ascii=False, separators=(",", ":")))
     return meta
 
@@ -101,7 +102,14 @@ def exportar_oficial(raiz: Path, saida: Path):
     (saida / "oficial.json").write_text(json.dumps({"tendencia": tend, "estoque": est}, ensure_ascii=False, separators=(",", ":")))
 
 
-def exportar_revisao(md: Path, saida: Path):
+def exportar_revisao(md: Path, saida: Path, csv_marcado: Path | None = None):
+    import csv
+
+    marcas = {}
+    if csv_marcado:
+        for r in csv.DictReader(Path(csv_marcado).open(encoding="utf-8", newline="")):
+            marcas[r["id"]] = {"nome": int(r["qtd_nomes_remanescentes"] or 0), "ident": int(r["qtd_identificadores_remanescentes"] or 0),
+                               "indevida": int(r["qtd_mascaras_indevidas"] or 0), "obs": r["observacoes"]}
     itens = []
     for bloco in re.split(r"\n## ", md.read_text())[1:]:
         cab, _, corpo = bloco.partition("\n")
@@ -110,7 +118,8 @@ def exportar_revisao(md: Path, saida: Path):
         trecho = "\n".join(re.findall(r"^> (.*)$", corpo, flags=re.MULTILINE))
         pal = re.search(r"palavras: (\d+) \| máscaras: (\d+)", corpo)
         itens.append({"id": id_, "cit": re.sub(r"\s*\[id .*$", "", cit), "palavras": int(pal.group(1)) if pal else 0,
-                      "mascaras": int(pal.group(2)) if pal else 0, "ctx": [c for c in ctx if "nenhuma" not in c], "trecho": trecho})
+                      "mascaras": int(pal.group(2)) if pal else 0, "ctx": [c for c in ctx if "nenhuma" not in c], "trecho": trecho,
+                      "ia": marcas.get(id_)})
     (saida / "revisao.json").write_text(json.dumps(itens, ensure_ascii=False, separators=(",", ":")))
     return len(itens)
 
@@ -121,13 +130,14 @@ def main():
     ap.add_argument("saida")
     ap.add_argument("--ano-min", type=int, default=2018)
     ap.add_argument("--revisao")
+    ap.add_argument("--revisao-csv", help="CSV já marcado (revisão por IA ou humana) para pré-preencher a aba")
     a = ap.parse_args()
     raiz, saida = Path(a.data_dir), Path(a.saida)
     saida.mkdir(parents=True, exist_ok=True)
     meta = exportar_anos(Store(raiz).connect(), saida, a.ano_min)
     exportar_oficial(raiz, saida)
     if a.revisao:
-        exportar_revisao(Path(a.revisao), saida)
+        exportar_revisao(Path(a.revisao), saida, a.revisao_csv)
     print(f"ok: {sum(meta['n'].values())} acórdãos em {len(meta['anos'])} anos")
 
 

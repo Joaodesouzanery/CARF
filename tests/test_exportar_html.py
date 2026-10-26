@@ -37,3 +37,19 @@ def test_limite_de_tamanho(base, tmp_path, monkeypatch):
                         lambda raiz, saida: (saida / "oficial.json").write_text('{"tendencia":[],"estoque":{"ref":"","linhas":[]}}'))
     with pytest.raises(SystemExit):
         exportar_html.montar(base, tmp_path / "y.html", limite_mb=0.001)
+
+
+def test_compactado_volta_igual(base, tmp_path, monkeypatch):
+    import base64
+    import gzip
+    import json
+    import re
+
+    monkeypatch.setattr(exportar_html.exportar, "exportar_oficial",
+                        lambda raiz, saida: (saida / "oficial.json").write_text('{"tendencia":[],"estoque":{"ref":"","linhas":[]}}'))
+    out = tmp_path / "z.html"
+    exportar_html.montar(base, out, compactar=True)
+    html = out.read_text()
+    gz = json.loads(re.search(r"window\.__GZ=(\{.*?\});", html).group(1))
+    ano = json.loads(gzip.decompress(base64.b64decode(gz["dados/ano-2024.json"])))
+    assert sorted(r[0] for r in ano["rows"]) == ["1", "2"]
