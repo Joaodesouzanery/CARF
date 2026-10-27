@@ -1,6 +1,6 @@
 <title>Jurisprudência CARF</title>
 <meta name="claude:viewport-fit-sides" content="cover">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&display=swap">
 <style>
 /* Layout: barra lateral de ícones, cabeçalho com título da aba, cartões brancos (indicadores, gráfico grande, rosquinhas com lista). */
 :root {
@@ -25,18 +25,19 @@
 body { background: var(--bg); background-image: radial-gradient(var(--dots) 1px, transparent 1px); background-size: 14px 14px; color: var(--ink);
   font-family: var(--sans); font-size: 14px; line-height: 1.5; margin: 0; }
 body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 30; background: var(--bg); }
-.app { display: grid; grid-template-columns: 64px minmax(0, 1fr); min-height: 100vh; }
-.rail { position: sticky; top: 0; align-self: start; height: 100vh; background: var(--panel); border-right: 1px solid var(--line); padding: calc(18px + env(safe-area-inset-top, 0px)) 0 18px;
-  display: flex; flex-direction: column; align-items: center; gap: 6px; z-index: 20; }
-.logo { width: 34px; height: 34px; border-radius: 10px; background: var(--accent); color: var(--accent-ink); display: grid; place-items: center; font-weight: 700; font-size: 13px; margin-bottom: 14px; }
-.rail nav { display: flex; flex-direction: column; gap: 6px; }
-.rail nav button { appearance: none; background: none; border: 0; width: 42px; height: 42px; border-radius: 10px; display: grid; place-items: center; color: var(--muted); cursor: pointer; position: relative; }
-.rail nav button svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.app { display: grid; grid-template-columns: 232px minmax(0, 1fr); min-height: 100vh; }
+.rail { position: sticky; top: 0; align-self: start; height: 100vh; background: var(--panel); border-right: 1px solid var(--line); padding: calc(20px + env(safe-area-inset-top, 0px)) 14px 18px;
+  display: flex; flex-direction: column; gap: 6px; z-index: 20; overflow-y: auto; }
+.brand { display: flex; align-items: center; gap: 10px; padding: 0 6px; margin-bottom: 18px; }
+.logo { width: 36px; height: 36px; border-radius: 10px; background: var(--accent); color: var(--accent-ink); display: grid; place-items: center; font-weight: 700; font-size: 13px; flex: none; }
+.brand b { display: block; font-size: 14px; line-height: 1.2; } .brand small { color: var(--muted); font-size: 11.5px; }
+.rail nav { display: flex; flex-direction: column; gap: 3px; }
+.rail nav button { appearance: none; background: none; border: 0; width: 100%; min-height: 42px; border-radius: 10px; display: flex; align-items: center; gap: 12px; padding: 0 12px;
+  color: var(--muted); cursor: pointer; font: 500 14px var(--sans); text-align: left; position: relative; }
+.rail nav button svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; flex: none; }
 .rail nav button:hover { background: var(--bg); color: var(--ink); }
-.rail nav button[aria-selected="true"] { background: var(--accent-soft); color: var(--accent); }
-.rail nav button[aria-selected="true"]::before { content: ""; position: absolute; left: -11px; top: 9px; bottom: 9px; width: 3px; border-radius: 3px; background: var(--accent); }
-.rail nav button span { position: absolute; left: 52px; background: var(--ink); color: var(--bg); padding: 3px 8px; border-radius: 6px; font-size: 12px; white-space: nowrap; opacity: 0; pointer-events: none; transition: opacity .12s; }
-.rail nav button:hover span, .rail nav button:focus-visible span { opacity: 1; }
+.rail nav button[aria-selected="true"] { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+.rail .dica { margin-top: auto; padding: 12px; border-radius: 12px; background: var(--bg); color: var(--muted); font-size: 12px; line-height: 1.45; }
 nav button:focus-visible, button:focus-visible, select:focus-visible, input:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .content { min-width: 0; padding: calc(26px + env(safe-area-inset-top, 0px)) max(20px, env(safe-area-inset-right, 0px)) 56px 28px; }
 .wrap { max-width: 1240px; margin: 0 auto; }
@@ -121,28 +122,93 @@ svg .lbl { fill: var(--ink); font-weight: 600; }
 .rev.feito { opacity: .75; }
 .note { font-size: 12.5px; color: var(--muted); border-left: 3px solid var(--warn); padding: 6px 12px; background: var(--warn-soft); border-radius: 0 8px 8px 0; max-width: 80ch; }
 .empty { color: var(--muted); padding: 28px 8px; text-align: center; }
-@media (max-width: 700px) {
+@media (max-width: 760px) {
   .app { grid-template-columns: minmax(0, 1fr); }
-  .rail { position: fixed; inset: auto 0 0 0; top: auto; height: auto; flex-direction: row; justify-content: center; padding: 6px 8px calc(6px + env(safe-area-inset-bottom, 0px)); border-right: 0; border-top: 1px solid var(--line); }
-  .logo { display: none; } .rail nav { flex-direction: row; gap: 2px; overflow-x: auto; max-width: 100%; }
-  .rail nav button { width: 44px; } .rail nav button[aria-selected="true"]::before { display: none; } .rail nav button span { display: none; }
-  .content { padding: calc(18px + env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) 90px max(16px, env(safe-area-inset-left, 0px)); }
+  .rail { position: fixed; inset: auto 0 0 0; top: auto; height: auto; flex-direction: row; justify-content: center; padding: 4px 4px calc(4px + env(safe-area-inset-bottom, 0px)); border-right: 0; border-top: 1px solid var(--line); overflow: visible; }
+  .brand, .rail .dica { display: none; } .rail nav { flex-direction: row; gap: 0; width: 100%; justify-content: space-between; }
+  .rail nav button { flex-direction: column; gap: 2px; padding: 5px 2px; min-height: 52px; font-size: 10px; justify-content: center; text-align: center; flex: 1 1 0; min-width: 0; }
+  .rail nav button svg { width: 20px; height: 20px; }
+  .content { padding: calc(18px + env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) 92px max(16px, env(safe-area-inset-left, 0px)); }
+}
+.bol { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 18px; align-items: start; }
+@media (max-width: 1050px) { .bol { grid-template-columns: minmax(0, 1fr); } }
+.bcfg { padding: 16px; display: grid; gap: 12px; position: sticky; top: 16px; max-height: calc(100vh - 32px); overflow-y: auto; }
+.bcfg textarea { width: 100%; min-height: 110px; font: 13.5px var(--sans); color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 9px; padding: 9px 11px; resize: vertical; }
+.bcfg input[type=text], .bcfg input[type=date] { width: 100%; font: 14px var(--sans); color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 9px; padding: 8px 10px; }
+.bcfg .chk { display: flex; gap: 8px; align-items: center; text-transform: none; letter-spacing: 0; font-size: 13.5px; color: var(--ink); margin: 0; }
+.bcfg .acoes { display: grid; gap: 8px; }
+.logoPrev { height: 54px; display: grid; place-items: center; border: 1px dashed var(--line); border-radius: 9px; background: #fff; color: #8a93a5; font-size: 12px; overflow: hidden; }
+.logoPrev img { max-height: 46px; max-width: 90%; object-fit: contain; }
+/* documento do boletim: sempre claro, como o papel */
+.doc { --d-navy: #14284b; --d-gold: #a9843a; --d-ink: #1b2430; --d-mut: #5b6577; --d-line: #dfe3ea; --d-soft: #f4f6fa;
+  --c1: #14284b; --c2: #a33a2f; --c3: #8a93a5; --muted: #5b6577; --line: #dfe3ea; --ink: #1b2430;
+  background: #fff; color: var(--d-ink); max-width: 860px; margin: 0 auto; border: 1px solid var(--line); border-radius: 6px; box-shadow: var(--shadow);
+  font-family: "Source Serif 4", Georgia, "Times New Roman", serif; font-size: 14.5px; line-height: 1.55; overflow: hidden; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+.doc * { box-sizing: border-box; }
+.doc .dh { background: var(--d-navy); color: #fff; padding: 22px 34px; display: flex; gap: 22px; align-items: center; justify-content: space-between; border-bottom: 4px solid var(--d-gold); }
+.doc .dlogo { background: #fff; border-radius: 6px; padding: 7px 12px; min-width: 96px; min-height: 52px; display: grid; place-items: center; }
+.doc .dlogo img { max-height: 48px; max-width: 200px; object-fit: contain; display: block; }
+.doc .dlogo span { color: var(--d-navy); font: 700 15px var(--sans); text-align: center; }
+.doc .dt { text-align: right; }
+.doc .dt small { display: block; letter-spacing: .22em; text-transform: uppercase; font: 600 10.5px var(--sans); color: #d8c28f; }
+.doc .dt h1 { margin: 4px 0 0; font: 700 25px/1.2 "Source Serif 4", Georgia, serif; color: #fff; letter-spacing: -.005em; }
+.doc .dmeta { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px 22px; padding: 16px 34px; background: var(--d-soft); border-bottom: 1px solid var(--d-line); font: 12.5px var(--sans); }
+.doc .dmeta span { display: block; color: var(--d-mut); font-size: 10.5px; letter-spacing: .12em; text-transform: uppercase; }
+.doc .dmeta b { font-weight: 600; color: var(--d-ink); }
+.doc .db { padding: 8px 34px 26px; }
+.doc h3 { margin: 22px 0 8px; padding-bottom: 5px; border-bottom: 1px solid var(--d-line); font: 700 12px var(--sans); letter-spacing: .16em; text-transform: uppercase; color: var(--d-navy); }
+.doc h3::before { content: ""; display: inline-block; width: 18px; height: 3px; background: var(--d-gold); margin-right: 9px; vertical-align: middle; }
+.doc p { margin: 6px 0; }
+.doc .dk { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin: 10px 0; }
+.doc .dk div { border: 1px solid var(--d-line); border-top: 3px solid var(--d-navy); border-radius: 4px; padding: 9px 12px; background: #fff; }
+.doc .dk b { display: block; font: 700 21px var(--sans); color: var(--d-navy); font-variant-numeric: tabular-nums; }
+.doc .dk span { font: 11.5px var(--sans); color: var(--d-mut); }
+.doc .dchips { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 2px; }
+.doc .dchips span { font: 500 11.5px var(--sans); background: var(--d-soft); border: 1px solid var(--d-line); border-radius: 999px; padding: 2px 10px; color: var(--d-ink); }
+.doc table { width: 100%; border-collapse: collapse; font: 12.5px var(--sans); margin: 8px 0; }
+.doc th { background: var(--d-soft); color: var(--d-navy); font: 600 10.5px var(--sans); letter-spacing: .08em; text-transform: uppercase; text-align: left; padding: 7px 8px; border-bottom: 2px solid var(--d-navy); }
+.doc td { padding: 6px 8px; border-bottom: 1px solid var(--d-line); }
+.doc td.n, .doc th.n { text-align: right; font-variant-numeric: tabular-nums; }
+.doc .dbar { display: grid; grid-template-columns: 150px minmax(0, 1fr) 90px; gap: 10px; align-items: center; font: 12.5px var(--sans); margin: 4px 0; }
+.doc .dbar i { display: block; height: 10px; border-radius: 2px; background: var(--d-navy); }
+.doc .dac { margin: 12px 0; padding: 11px 14px; border: 1px solid var(--d-line); border-left: 4px solid var(--d-navy); border-radius: 3px; page-break-inside: avoid; break-inside: avoid; }
+.doc .dac .c { font: 600 12.5px var(--sans); color: var(--d-navy); overflow-wrap: anywhere; }
+.doc .dac .m { font: 11.5px var(--sans); color: var(--d-mut); margin: 1px 0 4px; }
+.doc .dac p.e { font-size: 13.5px; }
+.doc .dac .nota { margin-top: 6px; padding: 6px 10px; background: #fbf6e8; border-left: 3px solid var(--d-gold); font: italic 13px var(--sans); }
+.doc .dac a { font: 12px var(--sans); color: var(--d-navy); }
+.doc .df { padding: 12px 34px; background: var(--d-soft); border-top: 1px solid var(--d-line); font: 11px var(--sans); color: var(--d-mut); display: flex; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
+.doc .dres { font: 13px var(--sans); }
+.doc .vazio { color: var(--d-mut); font: italic 13px var(--sans); }
+.doc .nota:empty::before { content: attr(data-ph); color: #a9b0bd; }
+.doc .nota { outline: none; min-height: 1.6em; }
+@media print { .doc .nota:empty, .noprint { display: none !important; } }
+.stars { border: 0; background: none; cursor: pointer; font-size: 18px; line-height: 1; color: var(--muted); padding: 2px 6px; border-radius: 8px; }
+.stars.on { color: #d49a00; }
+.cardtop { display: flex; justify-content: space-between; gap: 10px; align-items: flex-start; }
+@media print {
+  @page { size: A4; margin: 12mm; }
+  body { background: #fff !important; background-image: none !important; }
+  .rail, header, main > section:not(#boletim), .bcfg, body::before, #boletim > h2, #boletim > .lead { display: none !important; }
+  .app { display: block; } .content { padding: 0 !important; } .bol { display: block; }
+  .doc { border: 0; box-shadow: none; max-width: none; border-radius: 0; }
 }
 @media (prefers-reduced-motion: no-preference) { .card { transition: border-color .15s; } .card:hover { border-color: var(--accent); } }
 </style>
 
 <div class="app">
 <aside class="rail">
-  <div class="logo" aria-hidden="true">CF</div>
+  <div class="brand"><div class="logo" aria-hidden="true">CF</div><div><b>Jurisprudência CARF</b><small>Pesquisa e boletim</small></div></div>
   <nav role="tablist" id="tabs" aria-label="Seções">
-    <button role="tab" aria-selected="true" data-t="visao" aria-label="Visão geral"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg><span>Visão geral</span></button>
-    <button role="tab" aria-selected="false" data-t="pesquisa" aria-label="Pesquisa"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><span>Pesquisa</span></button>
-    <button role="tab" aria-selected="false" data-t="tendencias" aria-label="Tendências"><svg viewBox="0 0 24 24"><path d="M3 17l5-5 4 4 8-9"/><path d="M15 7h5v5"/></svg><span>Tendências</span></button>
-    <button role="tab" aria-selected="false" data-t="estoque" aria-label="Estoque"><svg viewBox="0 0 24 24"><path d="M3 7l9-4 9 4-9 4-9-4z"/><path d="M3 12l9 4 9-4"/><path d="M3 17l9 4 9-4"/></svg><span>Estoque</span></button>
-    <button role="tab" aria-selected="false" data-t="boletim" aria-label="Boletim"><svg viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M9 13h7M9 17h7"/></svg><span>Boletim</span></button>
-    <button role="tab" aria-selected="false" data-t="revisao" aria-label="Revisão LGPD"><svg viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/></svg><span>Revisão LGPD</span></button>
-    <button role="tab" aria-selected="false" data-t="sobre" aria-label="Sobre"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg><span>Sobre</span></button>
+    <button role="tab" aria-selected="true" data-t="visao" aria-label="Visão geral"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>Visão geral</button>
+    <button role="tab" aria-selected="false" data-t="pesquisa" aria-label="Pesquisa"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>Pesquisa</button>
+    <button role="tab" aria-selected="false" data-t="tendencias" aria-label="Tendências"><svg viewBox="0 0 24 24"><path d="M3 17l5-5 4 4 8-9"/><path d="M15 7h5v5"/></svg>Tendências</button>
+    <button role="tab" aria-selected="false" data-t="estoque" aria-label="Estoque"><svg viewBox="0 0 24 24"><path d="M3 7l9-4 9 4-9 4-9-4z"/><path d="M3 12l9 4 9-4"/><path d="M3 17l9 4 9-4"/></svg>Estoque</button>
+    <button role="tab" aria-selected="false" data-t="boletim" aria-label="Boletim"><svg viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M9 13h7M9 17h7"/></svg>Boletim</button>
+    <button role="tab" aria-selected="false" data-t="revisao" aria-label="Revisão LGPD"><svg viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/></svg>Revisão LGPD</button>
+    <button role="tab" aria-selected="false" data-t="sobre" aria-label="Sobre"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>Sobre</button>
   </nav>
+  <div class="dica"><b style="color:var(--ink)">Como usar</b><br>1. Pesquise e filtre.<br>2. Marque ☆ nos acórdãos que importam.<br>3. Monte o Boletim e salve em PDF.</div>
 </aside>
 <div class="content"><div class="wrap">
 <header>
@@ -185,6 +251,9 @@ svg .lbl { fill: var(--ink); font-weight: 600; }
       <div><label for="pre">Prescrição</label><select id="pre"><option value="0">Qualquer</option><option value="1">Acolhida</option><option value="2">Rejeitada</option></select></div>
       <div><label for="res">Resultado (leitura automática)</label><select id="res"><option value="">Qualquer</option><option value="PROVIDO">Provido</option><option value="PROVIDO_PARCIAL">Provido em parte</option><option value="NEGADO">Negado</option><option value="NAO_CONHECIDO">Não conhecido</option></select></div>
       <div><label for="turma">Colegiado</label><select id="turma"></select></div>
+      <div><label for="ftrib">Tributo (oficial)</label><select id="ftrib"></select></div>
+      <div><label for="fvot">Votação (oficial)</label><select id="fvot"></select></div>
+      <div><label for="ftipo">Tipo de recurso (oficial)</label><select id="ftipo"></select></div>
       <button class="b" id="limpar" type="button">Limpar filtros</button>
     </aside>
     <div>
@@ -220,9 +289,35 @@ svg .lbl { fill: var(--ink); font-weight: 600; }
 </section>
 
 <section id="boletim" hidden>
-  <h2>Boletim por tributo</h2>
-  <p class="lead">Resumo para o cliente: tendência oficial de provimento e as decisões mais recentes do tema.</p>
-  <div class="panel" id="bol"></div>
+  <h2>Boletim para o supervisor</h2>
+  <p class="lead">Monte o documento com a sua pesquisa, os acórdãos que você marcou (☆) e o seu comentário. Depois salve em PDF ou imprima.</p>
+  <div class="bol">
+    <aside class="panel bcfg" id="bcfg">
+      <div><span class="lab">Logo do escritório</span><div class="logoPrev" id="logoPrev">sem logo</div>
+        <div style="display:flex;gap:8px;margin-top:8px"><label class="b" style="cursor:pointer;margin:0;text-transform:none;letter-spacing:0;font-size:13px;color:var(--ink);padding:8px 13px;border:1px solid var(--line);border-radius:9px;background:var(--panel)" for="logoArq">Enviar logo</label><input id="logoArq" type="file" accept="image/*" hidden><button class="b" id="logoTirar" type="button">Remover</button></div></div>
+      <div><label for="bNome">Escritório</label><input id="bNome" type="text" placeholder="Nome do escritório"></div>
+      <div><label for="bTit">Título</label><input id="bTit" type="text" value="Boletim de Jurisprudência do CARF"></div>
+      <div><label for="bPara">Para</label><input id="bPara" type="text" placeholder="Ex.: Dr(a). supervisor(a)"></div>
+      <div><label for="bAut">Elaborado por</label><input id="bAut" type="text" placeholder="Seu nome"></div>
+      <div><label for="bData">Data</label><input id="bData" type="date"></div>
+      <div><label for="bRes">Resumo executivo</label><textarea id="bRes" placeholder="Escreva em poucas linhas o que o supervisor precisa saber: a pergunta, o que foi encontrado e a recomendação."></textarea></div>
+      <div><span class="lab">Seções</span>
+        <label class="chk"><input type="checkbox" id="sEsc" checked> Pesquisa e indicadores</label>
+        <label class="chk"><input type="checkbox" id="sCol" checked> Comparativo de colegiados</label>
+        <label class="chk"><input type="checkbox" id="sTen" checked> Tendência oficial por tributo</label>
+        <label class="chk"><input type="checkbox" id="sAc" checked> Acórdãos selecionados</label>
+        <label class="chk"><input type="checkbox" id="sMet" checked> Metodologia e ressalvas</label></div>
+      <div id="bTribBox"><label for="btrib">Tributo da tendência</label><select id="btrib"></select></div>
+      <div class="acoes">
+        <button class="b primary" id="bPrint" type="button">Imprimir / salvar em PDF</button>
+        <button class="b" id="bHtml" type="button">Baixar como HTML</button>
+        <button class="b" id="bCopy" type="button">Copiar texto</button>
+        <button class="b" id="bLimpa" type="button">Limpar acórdãos marcados</button>
+        <span class="hint" id="bMsg"></span>
+      </div>
+    </aside>
+    <div id="boletimDoc"></div>
+  </div>
 </section>
 
 <section id="revisao" hidden>
@@ -255,6 +350,7 @@ const store = { get(k) { try { return localStorage.getItem(k); } catch (e) { ret
 const STOP = new Set("de da do das dos e a o as os em no na nos nas para por com que ao aos se um uma ou como mais sua seu sao foi ser nao".split(" "));
 const RES = { PROVIDO: ["Provido", "ok"], PROVIDO_PARCIAL: ["Provido em parte", "ok"], NEGADO: ["Negado", "bad"], NAO_CONHECIDO: ["Não conhecido", "warn"], ACOLHIDO: ["Embargos acolhidos", "ok"], REJEITADO: ["Embargos rejeitados", "bad"], MISTO: ["Misto", "nt"], OUTRO: ["Outro", "nt"] };
 
+const TIPO_NOME = { VOLUNTARIO: "Recurso voluntário", OFICIO: "Recurso de ofício", EMBARGOS: "Embargos de declaração", ESPECIAL_CONTRIBUINTE: "Recurso especial do contribuinte", ESPECIAL_PROCURADORIA: "Recurso especial da Fazenda", OUTRO: "Outro" };
 let META = null, OFICIAL = null, REVISAO = [], PRONTAS = [];
 const anos = {};            // ano -> {rows, idx}
 const sel = new Set();      // anos marcados
@@ -363,7 +459,7 @@ function cardApi(x) {
 
 function filtrar() {
   if ($("#sem") && $("#sem").checked) { clearTimeout(timerSrv); timerSrv = setTimeout(buscarServidor, 350); return; }
-  const f = { nul: +$("#nul").value, pre: +$("#pre").value, res: $("#res").value, turma: $("#turma").value, assunto: $("#assunto").value };
+  const f = { nul: +$("#nul").value, pre: +$("#pre").value, res: $("#res").value, turma: $("#turma").value, assunto: $("#assunto").value, trib: $("#ftrib").value, vot: $("#fvot").value, tipo: $("#ftipo").value };
   const toks = fold($("#q").value).split(/[^a-z0-9]+/).filter((t) => t.length > 1 && !STOP.has(t));
   const out = [];
   for (const a of [...sel].sort().reverse()) {
@@ -384,6 +480,9 @@ function filtrar() {
       if (f.res && r[8] !== f.res) continue;
       if (f.turma !== "" && String(r[3]) !== f.turma) continue;
       if (f.assunto !== "" && String(r[5]) !== f.assunto) continue;
+      if (f.trib !== "" && String(r[11]) !== f.trib) continue;
+      if (f.vot !== "" && String(r[12]) !== f.vot) continue;
+      if (f.tipo !== "" && String(r[13]) !== f.tipo) continue;
       let s = 0;
       if (toks.length) { const e = fold(r[9].slice(0, 90)); toks.forEach((t) => { if (e.includes(t)) s += 2; }); }
       out.push([s, r[4] || "", r]);
@@ -405,14 +504,19 @@ function citacao(r) {
 
 function card(r) {
   const c = el("div", "card");
-  c.appendChild(el("div", "cit", `Acórdão ${r[1] || "s/n"} · Processo ${r[2] || "s/n"}`));
+  const topo = el("div", "cardtop"); topo.appendChild(el("div", "cit", `Acórdão ${r[1] || "s/n"} · Processo ${r[2] || "s/n"}`));
+  const st = el("button", "stars" + (marcados.has(r[0]) ? " on" : ""), marcados.has(r[0]) ? "★" : "☆"); st.type = "button"; st.title = "Marcar para o boletim"; st.setAttribute("aria-label", "Marcar para o boletim");
+  st.addEventListener("click", () => { alternar(r); const on = marcados.has(r[0]); st.textContent = on ? "★" : "☆"; st.classList.toggle("on", on); });
+  topo.appendChild(st); c.appendChild(topo);
   const d = r[4] ? r[4].split("-").reverse().join("/") : "s/d";
   c.appendChild(el("div", "meta", `${META.turmas[r[3]] || "colegiado não informado"} · sessão ${d}`));
   const chips = el("div", "chips");
   if (META.assuntos[r[5]]) chips.appendChild(el("span", "chip", META.assuntos[r[5]]));
   if (r[6]) chips.appendChild(el("span", "chip " + (r[6] === 1 ? "ok" : r[6] === 2 ? "bad" : "nt"), "Nulidade " + META.teses[r[6]]));
   if (r[7]) chips.appendChild(el("span", "chip " + (r[7] === 1 ? "ok" : r[7] === 2 ? "bad" : "nt"), "Prescrição " + META.teses[r[7]]));
-  const rs = RES[r[8]]; if (rs) chips.appendChild(el("span", "chip " + rs[1], rs[0]));
+  const rs = RES[r[8]]; if (rs) chips.appendChild(el("span", "chip " + rs[1], rs[0] + (r[14] ? " · oficial" : " · leitura automática")));
+  if (META.tributos && META.tributos[r[11]]) chips.appendChild(el("span", "chip nt", META.tributos[r[11]]));
+  if (META.votacoes && META.votacoes[r[12]]) chips.appendChild(el("span", "chip nt", META.votacoes[r[12]]));
   c.appendChild(chips);
   c.appendChild(el("p", "", r[9]));
   if (r[10]) { const p = el("p"); const a = el("a", "", "Abrir o acórdão (PDF oficial)"); a.href = META.link + r[10]; a.target = "_blank"; a.rel = "noopener"; p.appendChild(a); c.appendChild(p); }
@@ -428,7 +532,7 @@ function comparar() {
   t.appendChild(tb); t.appendChild(el("div", "hint", "Percentuais sobre os acórdãos do resultado atual; tese e resultado são leituras automáticas."));
 }
 
-function estadoAtual() { return { q: $("#q").value, nul: $("#nul").value, pre: $("#pre").value, res: $("#res").value, turma: $("#turma").value, assunto: $("#assunto").value, anos: [...sel] }; }
+function estadoAtual() { return { q: $("#q").value, nul: $("#nul").value, pre: $("#pre").value, res: $("#res").value, turma: $("#turma").value, assunto: $("#assunto").value, trib: $("#ftrib").value, vot: $("#fvot").value, tipo: $("#ftipo").value, anos: [...sel] }; }
 const salvas = (() => { try { return JSON.parse(store.get("carf-salvas") || "[]"); } catch (e) { return []; } })();
 function desenharSalvas() {
   const box = $("#salvas"); box.replaceChildren();
@@ -436,7 +540,7 @@ function desenharSalvas() {
     const b = el("button", "b", s.nome); b.type = "button";
     b.addEventListener("click", async () => {
       for (const a of s.e.anos) { const c = $("#ano" + a); if (c && !c.checked) { c.checked = true; await marcarAno(a, true); } }
-      $("#q").value = s.e.q; ["nul", "pre", "res", "turma", "assunto"].forEach((k) => ($("#" + k).value = s.e[k])); filtrar();
+      $("#q").value = s.e.q; ["nul", "pre", "res", "turma", "assunto"].forEach((k) => ($("#" + k).value = s.e[k])); [["ftrib", "trib"], ["fvot", "vot"], ["ftipo", "tipo"]].forEach(([i, k]) => ($("#" + i).value = s.e[k] || "")); filtrar();
     });
     const x = el("button", "b", "×"); x.type = "button"; x.setAttribute("aria-label", "Remover " + s.nome); x.style.padding = "8px 9px";
     x.addEventListener("click", () => { salvas.splice(i, 1); store.set("carf-salvas", JSON.stringify(salvas)); desenharSalvas(); });
@@ -487,7 +591,11 @@ function montarFiltros() {
   META.assuntos.map((n, i) => [n, i]).filter((x) => x[0]).sort((a, b) => a[0].localeCompare(b[0], "pt")).forEach(([n, i]) => ass.appendChild(new Option(n, String(i))));
   const tu = $("#turma"); tu.appendChild(new Option("Qualquer colegiado", ""));
   META.turmas.map((n, i) => [n, i]).filter((x) => x[0]).sort((a, b) => a[0].localeCompare(b[0], "pt")).forEach(([n, i]) => tu.appendChild(new Option(n, String(i))));
-  ["#nul", "#pre", "#res", "#turma", "#assunto"].forEach((s) => $(s).addEventListener("change", filtrar));
+  [["#ftrib", META.tributos, "Qualquer tributo"], ["#fvot", META.votacoes, "Qualquer votação"], ["#ftipo", META.tipos, "Qualquer tipo"]].forEach(([id, lista, rot]) => {
+    const sl = $(id); sl.appendChild(new Option(rot, ""));
+    (lista || []).map((n, i) => [n, i]).filter((x) => x[0]).sort((a, b) => a[0].localeCompare(b[0], "pt")).forEach(([n, i]) => sl.appendChild(new Option(TIPO_NOME[n] || n, String(i))));
+  });
+  ["#nul", "#pre", "#res", "#turma", "#assunto", "#ftrib", "#fvot", "#ftipo"].forEach((s) => $(s).addEventListener("change", filtrar));
   $("#q").addEventListener("input", () => { if ($("#sem") && $("#sem").checked) return; agenda(); });
   $("#q").addEventListener("keydown", (e) => { if (e.key === "Enter" && $("#sem") && $("#sem").checked) filtrar(); });
   $("#mais").addEventListener("click", mais);
@@ -496,7 +604,7 @@ function montarFiltros() {
     for (const a of [...META.anos].reverse()) { const i = $("#ano" + a); if (i && !i.checked) { b.textContent = `Carregando ${a}…`; i.checked = true; await marcarAno(a, true); } }
     b.textContent = "Todos os anos marcados"; b.disabled = false;
   });
-  $("#limpar").addEventListener("click", () => { $("#q").value = ""; ["#nul", "#pre"].forEach((s) => ($(s).value = "0")); ["#res", "#turma", "#assunto"].forEach((s) => ($(s).value = "")); filtrar(); });
+  $("#limpar").addEventListener("click", () => { $("#q").value = ""; ["#nul", "#pre"].forEach((s) => ($(s).value = "0")); ["#res", "#turma", "#assunto", "#ftrib", "#fvot", "#ftipo"].forEach((s) => ($(s).value = "")); filtrar(); });
   $("#copiar").addEventListener("click", async () => {
     const t = acha.slice(0, 200).map(citacao).join("\n");
     try { await navigator.clipboard.writeText(t); $("#copiar").textContent = "Copiado"; } catch (e) { $("#copiar").textContent = "Não foi possível copiar"; }
@@ -509,7 +617,7 @@ function montarProntas() {
   PRONTAS.forEach((p) => {
     const b = el("button", "b", p.titulo); b.type = "button";
     b.addEventListener("click", async () => {
-      $("#q").value = ""; ["#nul", "#pre"].forEach((x) => ($(x).value = "0")); ["#res", "#turma", "#assunto"].forEach((x) => ($(x).value = ""));
+      $("#q").value = ""; ["#nul", "#pre"].forEach((x) => ($(x).value = "0")); ["#res", "#turma", "#assunto", "#ftrib", "#fvot", "#ftipo"].forEach((x) => ($(x).value = ""));
       $("#anosHint").textContent = "carregando…";
       for (const a of p.anos) { try { await carregarAno(a); } catch (e) { /* ano indisponível */ } }
       $("#anosHint").textContent = "";
@@ -583,35 +691,106 @@ function montarEstoque() {
 }
 
 /* ---------- boletim ---------- */
+const marcados = new Map();
+try { JSON.parse(store.get("carf-marcados") || "[]").forEach((r) => marcados.set(r[0], r)); } catch (e) { /* sem marcados salvos */ }
+const notas = (() => { try { return JSON.parse(store.get("carf-notas") || "{}"); } catch (e) { return {}; } })();
+const cfgB = (() => { try { return JSON.parse(store.get("carf-bol") || "{}"); } catch (e) { return {}; } })();
+const esc = (v) => String(v == null ? "" : v).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const salvarMarcados = () => store.set("carf-marcados", JSON.stringify([...marcados.values()].slice(-60)));
+function alternar(r) { if (marcados.has(r[0])) marcados.delete(r[0]); else marcados.set(r[0], r); salvarMarcados(); }
+const dataBR = (iso) => (iso ? iso.split("-").reverse().join("/") : "");
+
+function descricaoFiltros() {
+  const e = estadoAtual(), t = [];
+  if (e.q) t.push(`Palavras: “${e.q}”`);
+  if (e.anos.length) { const a = [...e.anos].sort(); t.push(`Anos: ${a.length > 3 ? a[0] + " a " + a[a.length - 1] + " (" + a.length + " anos)" : a.join(", ")}`); }
+  if (e.assunto !== "") t.push("Matéria: " + META.assuntos[+e.assunto]);
+  if (e.nul !== "0") t.push("Nulidade " + (e.nul === "1" ? "acolhida" : "rejeitada"));
+  if (e.pre !== "0") t.push("Prescrição " + (e.pre === "1" ? "acolhida" : "rejeitada"));
+  if (e.res) t.push("Resultado: " + (RES[e.res] || [e.res])[0]);
+  if (e.turma !== "") t.push("Colegiado: " + META.turmas[+e.turma]);
+  if (e.trib !== "") t.push("Tributo: " + META.tributos[+e.trib]);
+  if (e.vot !== "") t.push("Votação: " + META.votacoes[+e.vot]);
+  if (e.tipo !== "") t.push("Recurso: " + (TIPO_NOME[META.tipos[+e.tipo]] || META.tipos[+e.tipo]));
+  return t;
+}
+
+function desenharDoc() {
+  const box = $("#boletimDoc"); if (!box || !META) return;
+  const hoje = cfgB.data || new Date().toISOString().slice(0, 10), filtros = descricaoFiltros(), total = acha.length;
+  const cnt = (f) => acha.filter(f).length, prov = cnt((r) => r[8] === "PROVIDO" || r[8] === "PROVIDO_PARCIAL"), neg = cnt((r) => r[8] === "NEGADO"), nulA = cnt((r) => r[6] === 1), nulR = cnt((r) => r[6] === 2), of = cnt((r) => r[14]);
+  let h = `<div class="dh"><div class="dlogo">${cfgB.logo ? `<img src="${cfgB.logo}" alt="Logo">` : `<span>${esc(cfgB.nome || "Seu escritório")}</span>`}</div><div class="dt"><small>${esc(cfgB.nome || "Jurisprudência CARF")}</small><h1>${esc(cfgB.tit || "Boletim de Jurisprudência do CARF")}</h1></div></div>`;
+  h += `<div class="dmeta"><div><span>Data</span><b>${esc(dataBR(hoje))}</b></div><div><span>Para</span><b>${esc(cfgB.para || "—")}</b></div><div><span>Elaborado por</span><b>${esc(cfgB.aut || "—")}</b></div><div><span>Base</span><b>${fmt(Object.values(META.n).reduce((a, b) => a + b, 0))} acórdãos, ${META.anos[0]}–${META.anos[META.anos.length - 1]}</b></div></div><div class="db">`;
+  const resumo = (cfgB.res || "").trim();
+  h += `<h3>Resumo executivo</h3>` + (resumo ? resumo.split(/\n{2,}|\n/).filter(Boolean).map((p) => `<p>${esc(p)}</p>`).join("") : `<p class="vazio">Escreva o resumo executivo no painel à esquerda.</p>`);
+  if (cfgB.sEsc !== false) {
+    h += `<h3>Pesquisa realizada e indicadores</h3><div class="dchips">${filtros.length ? filtros.map((x) => `<span>${esc(x)}</span>`).join("") : "<span>Sem filtros: todos os acórdãos dos anos selecionados</span>"}</div>`;
+    h += `<div class="dk"><div><b>${fmt(total)}</b><span>acórdãos encontrados</span></div><div><b>${pct(prov, total)}</b><span>providos (total ou parcial)</span></div><div><b>${pct(neg, total)}</b><span>negados</span></div><div><b>${fmt(nulA)}</b><span>nulidade acolhida (${fmt(nulR)} rejeitada)</span></div></div>`;
+    const dist = {}; acha.forEach((r) => { dist[r[8]] = (dist[r[8]] || 0) + 1; });
+    const ord = Object.entries(dist).sort((a, b) => b[1] - a[1]).slice(0, 5), max = ord.length ? ord[0][1] : 1;
+    h += ord.map(([k, n]) => `<div class="dbar"><span>${esc((RES[k] || [k])[0])}</span><span><i style="width:${Math.max(2, (n / max) * 100)}%"></i></span><span style="text-align:right">${fmt(n)} (${pct(n, total)})</span></div>`).join("");
+    h += `<p class="vazio">Resultado oficial do CARF em ${pct(of, total)} dos acórdãos encontrados; nos demais, leitura automática da decisão.</p>`;
+  }
+  if (cfgB.sCol !== false && total) {
+    const m = new Map(); acha.forEach((r) => { const t = META.turmas[r[3]] || "(sem colegiado)"; const o = m.get(t) || { n: 0, na: 0, p: 0, g: 0 }; o.n++; if (r[6] === 1) o.na++; if (r[8] === "PROVIDO" || r[8] === "PROVIDO_PARCIAL") o.p++; if (r[8] === "NEGADO") o.g++; m.set(t, o); });
+    h += `<h3>Comparativo de colegiados</h3><table><tr><th>Colegiado</th><th class="n">Acórdãos</th><th class="n">Providos</th><th class="n">Negados</th><th class="n">Nulidade acolhida</th></tr>` +
+      [...m.entries()].sort((a, b) => b[1].n - a[1].n).slice(0, 8).map(([k, o]) => `<tr><td>${esc(k)}</td><td class="n">${fmt(o.n)}</td><td class="n">${pct(o.p, o.n)}</td><td class="n">${pct(o.g, o.n)}</td><td class="n">${o.na || "–"}</td></tr>`).join("") + `</table>`;
+  }
+  if (cfgB.sTen !== false && OFICIAL) {
+    const ft = estadoAtual().trib, doFiltro = ft !== "" ? META.tributos[+ft] : "";
+    if (!cfgB.trib && doFiltro && [...$("#btrib").options].some((o) => o.value === doFiltro)) $("#btrib").value = doFiltro;  // segue o tributo da pesquisa
+    const trib = $("#btrib").value, d = agregarTend(trib);
+    if (d.length) {
+      const u = d[d.length - 1], pr = d[d.length - 2];
+      h += `<h3>Tendência oficial: ${esc(trib)}</h3><p>Em ${u.ano}, ${pct(u.p, u.t)} dos recursos de ${esc(trib)} foram providos, total ou parcialmente${pr ? ` (em ${pr.ano}: ${pct(pr.p, pr.t)})` : ""}. Base: ${fmt(u.t)} recursos julgados em ${u.ano}, dado aberto oficial do CARF.</p><div class="legend" style="font:11.5px var(--sans)"><span><i style="background:#14284b"></i>Provido</span><span><i style="background:#a33a2f"></i>Negado</span><span><i style="background:#8a93a5"></i>Não conhecido</span></div>${grafico(d)}`;
+    }
+  }
+  if (cfgB.sAc !== false) {
+    h += `<h3>Acórdãos selecionados (${marcados.size})</h3>`;
+    if (!marcados.size) h += `<p class="vazio">Nenhum acórdão marcado. Na aba Pesquisa, clique em ☆ nos acórdãos que quer levar ao boletim.</p>`;
+    [...marcados.values()].forEach((r) => {
+      const chips = [META.assuntos[r[5]], r[6] ? "Nulidade " + META.teses[r[6]] : "", r[7] ? "Prescrição " + META.teses[r[7]] : "", RES[r[8]] ? RES[r[8]][0] + (r[14] ? " (oficial)" : " (leitura automática)") : "", META.tributos[r[11]], META.votacoes[r[12]]].filter(Boolean);
+      h += `<div class="dac"><div class="c">Acórdão ${esc(r[1] || "s/n")} · Processo ${esc(r[2] || "s/n")}</div><div class="m">${esc(META.turmas[r[3]] || "")} · sessão ${esc(dataBR(r[4]))} <a href="#" class="noprint" data-rm="${esc(r[0])}">remover</a></div><div class="dchips">${chips.map((x) => `<span>${esc(x)}</span>`).join("")}</div><p class="e">${esc(r[9])}</p>${r[10] ? `<a href="${META.link + r[10]}" target="_blank" rel="noopener">Acórdão completo (PDF oficial)</a>` : ""}<div class="nota" contenteditable="true" data-nota="${esc(r[0])}" data-ph="Comentário do advogado (opcional)">${esc(notas[r[0]] || "")}</div></div>`;
+    });
+  }
+  if (cfgB.sMet !== false) {
+    h += `<h3>Metodologia e ressalvas</h3><p style="font:12.5px var(--sans)">Fonte: acórdãos do índice público do CARF (acordaos.economia.gov.br) e dados abertos oficiais de Julgamentos e Estoque. O resultado, a tributação e a votação são os oficiais quando disponíveis (2018 a 2025); nos demais casos, e nas teses de nulidade e prescrição, trata-se de leitura automática do texto da decisão, útil para triagem e sujeita a erro. Os textos foram anonimizados. Este documento é auxiliar de pesquisa e não constitui parecer jurídico: confira o acórdão antes de citá-lo. Dados atualizados em ${esc(META.gerado || "")}.</p>`;
+  }
+  h += `</div><div class="df"><span>${esc(cfgB.nome || "")}</span><span>Gerado em ${esc(dataBR(hoje))} · Jurisprudência CARF</span></div>`;
+  box.className = "doc"; box.innerHTML = h;
+}
+
+function textoDoc() { return $("#boletimDoc").innerText.replace(/\n{3,}/g, "\n\n"); }
+
 async function montarBoletim() {
-  const alvo = $("#bol"); alvo.replaceChildren();
   const tot = {}; OFICIAL.tendencia.forEach(([, t, , n]) => { tot[t] = (tot[t] || 0) + n; });
-  const sl = el("select"); sl.id = "btrib";
-  Object.keys(tot).filter((t) => t).sort((a, b) => tot[b] - tot[a]).slice(0, 40).forEach((t) => sl.appendChild(new Option(t, t)));
-  if (tot["PIS/PASEP"]) sl.value = "PIS/PASEP";
-  const topo = el("div"); topo.style.cssText = "max-width:360px;margin-bottom:14px"; const lb = el("label", "", "Tributo"); lb.htmlFor = "btrib"; topo.append(lb, sl);
-  const corpo = el("div"); alvo.append(topo, corpo);
-  const termo = el("div"); termo.style.cssText = "max-width:360px;margin-bottom:14px"; const l2 = el("label", "", "Tema nas decisões recentes"); l2.htmlFor = "bterm";
-  const it = el("input"); it.id = "bterm"; it.type = "search"; it.value = "insumo"; termo.append(l2, it); alvo.insertBefore(termo, corpo);
-  const ult = META.anos[META.anos.length - 1];
-  try { await carregarAno(ult); } catch (e) { /* segue sem as decisões recentes */ }
-  const draw = () => {
-    corpo.replaceChildren();
-    const d = agregarTend(sl.value);
-    if (!d.length) { corpo.appendChild(el("div", "empty", "Poucos julgamentos oficiais para este tributo.")); return; }
-    const u = d[d.length - 1], p = d[d.length - 2];
-    corpo.appendChild(el("h2", "", `Em ${u.ano}, ${pct(u.p, u.t)} dos recursos de ${sl.value} foram providos, total ou parcialmente`));
-    corpo.appendChild(el("p", "lead", `${p ? `Em ${p.ano} foram ${pct(p.p, p.t)}. ` : ""}Base: ${fmt(u.t)} recursos julgados em ${u.ano}, dado aberto oficial.`));
-    const sv = el("div", "scroll"); sv.innerHTML = grafico(d); corpo.appendChild(sv);
-    if (!anos[ult]) return;
-    const tk = fold(it.value).split(/[^a-z0-9]+/).filter((t) => t.length > 1);
-    const novos = anos[ult].rows.filter((r) => { const e = fold(r[9] + " " + META.assuntos[r[5]]); return tk.every((t) => e.includes(t)) && e.includes(fold(sl.value.split("/")[0])); }).slice(0, 5);
-    corpo.appendChild(el("h2", "", `Decisões recentes de ${sl.value} sobre “${it.value}” (${ult})`));
-    if (!novos.length) corpo.appendChild(el("div", "empty", "Nenhuma decisão encontrada."));
-    novos.forEach((r) => corpo.appendChild(card(r)));
-  };
-  sl.addEventListener("change", draw); it.addEventListener("input", () => { clearTimeout(timer); timer = setTimeout(draw, 250); });
-  draw();
+  const sl = $("#btrib"); Object.keys(tot).filter((t) => t).sort((a, b) => tot[b] - tot[a]).slice(0, 40).forEach((t) => sl.appendChild(new Option(t, t)));
+  sl.value = cfgB.trib && tot[cfgB.trib] ? cfgB.trib : tot["PIS/PASEP"] ? "PIS/PASEP" : sl.options[0].value;
+  const campos = { bNome: "nome", bTit: "tit", bPara: "para", bAut: "aut", bData: "data", bRes: "res" };
+  Object.entries(campos).forEach(([id, k]) => { const e = $("#" + id); if (cfgB[k]) e.value = cfgB[k]; else if (id === "bData") e.value = new Date().toISOString().slice(0, 10); else if (id === "bTit" && !cfgB.tit) e.value = "Boletim de Jurisprudência do CARF";
+    e.addEventListener("input", () => { cfgB[k] = e.value; store.set("carf-bol", JSON.stringify(cfgB)); clearTimeout(timer); timer = setTimeout(desenharDoc, 200); }); });
+  [["sEsc", "sEsc"], ["sCol", "sCol"], ["sTen", "sTen"], ["sAc", "sAc"], ["sMet", "sMet"]].forEach(([id, k]) => { const e = $("#" + id); e.checked = cfgB[k] !== false; e.addEventListener("change", () => { cfgB[k] = e.checked; store.set("carf-bol", JSON.stringify(cfgB)); desenharDoc(); }); });
+  sl.addEventListener("change", () => { cfgB.trib = sl.value; store.set("carf-bol", JSON.stringify(cfgB)); desenharDoc(); });
+  const prev = $("#logoPrev"), pintaLogo = () => { prev.replaceChildren(); if (cfgB.logo) { const i = el("img"); i.src = cfgB.logo; i.alt = "Logo"; prev.appendChild(i); } else prev.textContent = "sem logo"; };
+  pintaLogo();
+  $("#logoArq").addEventListener("change", (ev) => {
+    const f = ev.target.files[0]; if (!f) return;
+    if (f.size > 1.5e6) { $("#bMsg").textContent = "Imagem grande demais (máx. 1,5 MB)."; return; }
+    const rd = new FileReader(); rd.onload = () => { cfgB.logo = rd.result; store.set("carf-bol", JSON.stringify(cfgB)); pintaLogo(); desenharDoc(); }; rd.readAsDataURL(f);
+  });
+  $("#logoTirar").addEventListener("click", () => { delete cfgB.logo; store.set("carf-bol", JSON.stringify(cfgB)); pintaLogo(); desenharDoc(); });
+  $("#bPrint").addEventListener("click", () => { desenharDoc(); window.print(); });
+  $("#bLimpa").addEventListener("click", () => { marcados.clear(); salvarMarcados(); desenharDoc(); });
+  $("#bCopy").addEventListener("click", async () => { try { await navigator.clipboard.writeText(textoDoc()); $("#bMsg").textContent = "Texto copiado."; } catch (e) { $("#bMsg").textContent = "Não foi possível copiar."; } });
+  $("#bHtml").addEventListener("click", () => {
+    let css = ""; for (const sh of document.styleSheets) { try { for (const r of sh.cssRules) if (r.cssText.includes(".doc") || r.cssText.startsWith("@page")) css += r.cssText + "\n"; } catch (e) { /* folha externa */ } }
+    const clone = $("#boletimDoc").cloneNode(true); clone.querySelectorAll(".noprint").forEach((n) => n.remove()); clone.querySelectorAll("[contenteditable]").forEach((n) => n.removeAttribute("contenteditable"));
+    const html = `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>${esc(cfgB.tit || "Boletim")}</title><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Source+Serif+4:wght@400;600;700&display=swap"><style>body{margin:0;background:#eef0f4;padding:24px}${css}</style></head><body>${clone.outerHTML}</body></html>`;
+    try { const a = el("a"); a.href = URL.createObjectURL(new Blob([html], { type: "text/html" })); a.download = "boletim-jurisprudencia.html"; document.body.appendChild(a); a.click(); a.remove(); $("#bMsg").textContent = "Arquivo gerado."; } catch (e) { $("#bMsg").textContent = "Não foi possível baixar aqui; use Imprimir / salvar em PDF."; }
+  });
+  $("#boletimDoc").addEventListener("input", (ev) => { const n = ev.target.closest("[data-nota]"); if (n) { notas[n.dataset.nota] = n.textContent; store.set("carf-notas", JSON.stringify(notas)); } });
+  $("#boletimDoc").addEventListener("click", (ev) => { const a = ev.target.closest("[data-rm]"); if (a) { ev.preventDefault(); marcados.delete(a.dataset.rm); salvarMarcados(); desenharDoc(); } });
+  desenharDoc();
 }
 
 /* ---------- revisão LGPD ---------- */
@@ -727,7 +906,7 @@ function abas() {
   document.querySelectorAll("#tabs button").forEach((b) => b.addEventListener("click", () => ir(b.dataset.t)));
   const TIT = { visao: "Visão geral", pesquisa: "Pesquisa de jurisprudência", tendencias: "Tendências", estoque: "Estoque", boletim: "Boletim", revisao: "Revisão LGPD", sobre: "Sobre" };
   function ir(t) {
-    $("#titulo").textContent = TIT[t] || t; window.scrollTo(0, 0);
+    $("#titulo").textContent = TIT[t] || t; window.scrollTo(0, 0); if (t === "boletim" && typeof desenharDoc === "function") desenharDoc();
     document.querySelectorAll("#tabs button").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.t === t)));
     document.querySelectorAll("main > section").forEach((s) => (s.hidden = s.id !== t));
   }

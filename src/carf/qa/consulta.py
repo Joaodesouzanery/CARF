@@ -10,7 +10,8 @@ from .. import config
 FILTROS = {"ano": "ano = ?", "turma": "turma = ?", "camara": "camara = ?", "secao": "secao = ?",
            "relator": "relator = ?", "numero_processo": "numero_processo = ?",
            "assunto": "assunto_norm LIKE ?",  # contém, sem acento/caixa
-           "tese_nulidade": "tese_nulidade = ?", "tese_prescricao": "tese_prescricao = ?"}
+           "tese_nulidade": "tese_nulidade = ?", "tese_prescricao": "tese_prescricao = ?",
+           "tributo": "tributo = ?", "desfecho_oficial": "desfecho_oficial = ?", "votacao": "votacao = ?", "tipo_recurso": "tipo_recurso = ?"}
 DIMENSOES = {"ano", "turma", "camara", "secao", "relator"}
 
 # Mesma taxonomia do dado aberto oficial (gerenciais.desfecho). O mérito prevalece sobre o

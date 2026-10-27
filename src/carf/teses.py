@@ -142,8 +142,28 @@ def enriquecer(ementa: str | None, decisao: str | None) -> dict:
     }
 
 
+def _oficial(store) -> dict:
+    """numero_decisao -> dados do dado aberto oficial (tributo, resultado, votação, tipo de recurso)."""
+    from pathlib import Path
+
+    from .qa import gerenciais as qg
+
+    raiz = Path(store.root)
+    if not (raiz / "gerenciais" / "julgamentos").exists():
+        return {}
+    g = qg.conectar(raiz)
+    rows = g.execute("""SELECT numero_decisao, numero_processo, tributo, desfecho, votacao, tipo_recurso FROM julgamentos
+                        WHERE numero_decisao IS NOT NULL AND tipo_resultado = 'Acórdão'""").fetchall()
+    por: dict[str, dict] = {}
+    for dec, proc, trib, des, vot, tipo in rows:
+        d = por.setdefault(dec, {})
+        d[re.sub(r"\D", "", proc or "")] = (trib, des, vot, tipo)
+        d.setdefault("", (trib, des, vot, tipo))  # reserva: primeira linha da decisão
+    return por
+
+
 def construir_facets(store, log=print) -> int:
-    """Calcula assunto/teses de todos os acórdãos e grava `facets.parquet` ao lado dos dados.
+    """Calcula assunto/teses e junta o dado oficial (por número da decisão); grava `facets.parquet`.
 
     Arquivo à parte (e não colunas nas partições): dá para recalcular quando a regra melhora sem
     reescrever a base, e o DuckDB junta pelo id na view `acordaos`.
@@ -152,18 +172,27 @@ def construir_facets(store, log=print) -> int:
     import pyarrow.parquet as pq
 
     con = store.connect()
-    linhas = con.execute("SELECT id, ementa, decisao FROM acordaos_base").fetchall()
-    cols = {k: [] for k in ("id", "assunto", "assunto_norm", "teses", "tese_nulidade", "tese_prescricao")}
-    for id_, ementa, decisao in linhas:
+    linhas = con.execute("SELECT id, ementa, decisao, numero_decisao, numero_processo FROM acordaos_base").fetchall()
+    oficial = _oficial(store)
+    chaves = ("id", "assunto", "assunto_norm", "teses", "tese_nulidade", "tese_prescricao",
+              "tributo", "desfecho_oficial", "votacao", "tipo_recurso")
+    cols = {k: [] for k in chaves}
+    casou = 0
+    for id_, ementa, decisao, dec, proc in linhas:
         f = enriquecer(ementa, decisao)
+        o = oficial.get(dec or "", {})
+        reg = o.get(re.sub(r"\D", "", proc or "")) or o.get("") or (None, None, None, None)
+        casou += bool(o)
         cols["id"].append(id_)
         cols["assunto"].append(f["assunto"])
         cols["assunto_norm"].append(_norm(f["assunto"]) if f["assunto"] else None)
         cols["teses"].append(f["teses"])
         cols["tese_nulidade"].append(f["tese_nulidade"])
         cols["tese_prescricao"].append(f["tese_prescricao"])
+        for k, v in zip(("tributo", "desfecho_oficial", "votacao", "tipo_recurso"), reg, strict=True):
+            cols[k].append(v)
     tmp = store.facets_path.with_suffix(".tmp")
     pq.write_table(pa.table(cols), tmp, compression="zstd")
     tmp.replace(store.facets_path)
-    log(f"{len(linhas)} acórdãos enriquecidos")
+    log(f"{len(linhas)} acórdãos enriquecidos; {casou} com dado oficial")
     return len(linhas)

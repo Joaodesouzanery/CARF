@@ -27,7 +27,8 @@ from .qa import gerenciais as qg
 from .store import Store
 
 LINK = "https://acordaos.economia.gov.br/acordaos2/pdfs/processados/"
-FILTROS_API = {"ano", "turma", "camara", "secao", "relator", "assunto", "tese_nulidade", "tese_prescricao"}
+FILTROS_API = {"ano", "turma", "camara", "secao", "relator", "assunto", "tese_nulidade", "tese_prescricao",
+               "tributo", "desfecho_oficial", "votacao", "tipo_recurso"}
 TESES = {"ACOLHIDA", "REJEITADA", "INDEFINIDA"}
 
 

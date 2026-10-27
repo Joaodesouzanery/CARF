@@ -32,7 +32,7 @@ SCHEMA = pa.schema(
 )
 
 
-FACETS_COLS = ["assunto", "assunto_norm", "teses", "tese_nulidade", "tese_prescricao"]
+FACETS_COLS = ["assunto", "assunto_norm", "teses", "tese_nulidade", "tese_prescricao", "tributo", "desfecho_oficial", "votacao", "tipo_recurso"]
 
 
 class Store:
@@ -77,9 +77,10 @@ class Store:
             con.execute(f"CREATE VIEW acordaos_base AS SELECT {cols} WHERE false")
         if self.facets_path.exists():
             fp = str(self.facets_path).replace("'", "''")
-            con.execute(
-                f"CREATE VIEW acordaos AS SELECT b.*, f.assunto, f.assunto_norm, f.teses, f.tese_nulidade, "
-                f"f.tese_prescricao FROM acordaos_base b LEFT JOIN read_parquet('{fp}') f USING (id)")
+            tem = set(pq.read_schema(self.facets_path).names)  # facets antigos podem não ter colunas novas
+            sel = ", ".join(f"f.{c}" if c in tem else f"NULL::VARCHAR AS {c}" for c in FACETS_COLS)
+            con.execute(f"CREATE VIEW acordaos AS SELECT b.*, {sel} FROM acordaos_base b "
+                        f"LEFT JOIN read_parquet('{fp}') f USING (id)")
         else:
             nulos = ", ".join(f"NULL::VARCHAR AS {c}" for c in FACETS_COLS)
             con.execute(f"CREATE VIEW acordaos AS SELECT *, {nulos} FROM acordaos_base")

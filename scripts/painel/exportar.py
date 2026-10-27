@@ -17,7 +17,7 @@ from carf.qa import gerenciais as qg
 from carf.store import Store
 
 LINK = "https://acordaos.economia.gov.br/acordaos2/pdfs/processados/"
-COLS = ["id", "decisao", "processo", "turma", "data", "assunto", "nul", "pre", "res", "ementa", "pdf"]
+COLS = ["id", "decisao", "processo", "turma", "data", "assunto", "nul", "pre", "res", "ementa", "pdf", "trib", "vot", "tipo", "of"]
 TESE = {None: 0, "ACOLHIDA": 1, "REJEITADA": 2, "INDEFINIDA": 3}
 
 
@@ -75,18 +75,19 @@ def resumo_decisao(d: str | None, n=230) -> str:
 def exportar_anos(con, saida: Path, anos_min: int, anos_max: int = 9999, filtro_sql: str = "", params=()) -> dict:
     d = saida / "dados"
     d.mkdir(parents=True, exist_ok=True)
-    turmas, assuntos = {}, {}
+    turmas, assuntos, tributos, votos, tipos = {}, {}, {}, {}, {}
     por_ano = {}
     resumo = {"ano": {}, "assuntos": Counter(), "res": Counter(), "turmas": Counter(), "nul": Counter(), "pre": Counter()}
     q = con.execute("""SELECT id, numero_decisao, numero_processo, turma, dt_sessao, ano, assunto, tese_nulidade,
-                       tese_prescricao, decisao, ementa, nome_arquivo_pdf FROM acordaos
+                       tese_prescricao, decisao, ementa, nome_arquivo_pdf, tributo, desfecho_oficial, votacao, tipo_recurso FROM acordaos
                        WHERE ano BETWEEN ? AND ?""" + filtro_sql + " ORDER BY dt_sessao DESC, id", [anos_min, anos_max, *params])
     linhas = q.fetchall()
     canon = canonicos(l[6] for l in linhas)
-    for (id_, dec, proc, turma, dt, ano, assunto, nul, pre, decisao, ementa, pdf) in linhas:
+    for (id_, dec, proc, turma, dt, ano, assunto, nul, pre, decisao, ementa, pdf, trib, des_of, vot, tipo) in linhas:
         ti = turmas.setdefault(turma or "", len(turmas))
         ai = assuntos.setdefault(canon.get(_chave_assunto(assunto), "") if assunto else "", len(assuntos))
-        res = consulta.classificar_resultado(decisao)
+        res = des_of or consulta.classificar_resultado(decisao)  # oficial quando existe
+        tributos.setdefault(trib or "", len(tributos)); votos.setdefault(vot or "", len(votos)); tipos.setdefault(tipo or "", len(tipos))
         r_ano = resumo["ano"].setdefault(str(ano), {"n": 0, "res": Counter(), "nul": Counter()})
         r_ano["n"] += 1
         r_ano["res"][res] += 1
@@ -99,11 +100,13 @@ def exportar_anos(con, saida: Path, anos_min: int, anos_max: int = 9999, filtro_
             resumo["assuntos"][canon.get(_chave_assunto(assunto), "")] += 1
         por_ano.setdefault(ano, []).append([
             id_, dec, proc, ti, dt.isoformat() if dt else None, ai, TESE[nul], TESE[pre],
-            res, resumo_ementa(ementa) if (ementa or "").strip() else resumo_decisao(decisao), pdf])
+            res, resumo_ementa(ementa) if (ementa or "").strip() else resumo_decisao(decisao), pdf,
+            tributos[trib or ""], votos[vot or ""], tipos[tipo or ""], int(bool(des_of))])
     for ano, rows in por_ano.items():
         (d / f"ano-{ano}.json").write_text(json.dumps({"cols": COLS, "rows": rows}, ensure_ascii=False, separators=(",", ":")))
     meta = {"anos": sorted(por_ano), "n": {str(a): len(r) for a, r in por_ano.items()},
-            "turmas": list(turmas), "assuntos": list(assuntos), "link": LINK,
+            "turmas": list(turmas), "assuntos": list(assuntos), "tributos": list(tributos), "votacoes": list(votos),
+            "tipos": list(tipos), "link": LINK,
             "teses": ["", "acolhida", "rejeitada", "indefinida"], "gerado": date.today().strftime("%d/%m/%Y"),
             "resumo": {"ano": {a: {"n": v["n"], "res": dict(v["res"]), "nul": dict(v["nul"])} for a, v in resumo["ano"].items()},
                        "assuntos": resumo["assuntos"].most_common(14), "res": dict(resumo["res"]),
