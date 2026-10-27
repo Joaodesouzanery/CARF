@@ -9,8 +9,8 @@ import re
 import unicodedata
 
 _CAB = re.compile(
-    r"^\s*assunto:\s*(.*?)\s+(?:per[íi]odo de apura[çc][ãa]o|ano-calend[áa]rio|exerc[íi]cio|"
-    r"data do fato gerador|data)\b",
+    r"^\s*(?:assunto:\s*)?(.*?)\s+(?:per[íi]odo de apura[çc][ãa]o|ano-calend[áa]rio|exerc[íi]cio|"
+    r"data do fato gerador)\b",
     re.IGNORECASE | re.DOTALL,
 )
 _DATAS = re.compile(
@@ -26,6 +26,11 @@ def _norm(s: str | None) -> str:
     return re.sub(r"\s+", " ", "".join(c for c in s if not unicodedata.combining(c))).lower().strip()
 
 
+def _tem_cab(ementa: str | None) -> bool:
+    m = _CAB.match(ementa or "")
+    return bool(m) and len(m.group(1)) <= 160
+
+
 def extrair_assunto(ementa: str | None) -> str | None:
     m = _CAB.match(ementa or "")
     if not m:
@@ -35,13 +40,13 @@ def extrair_assunto(ementa: str | None) -> str | None:
 
 
 def _corpo(ementa: str | None) -> str:
-    c = _DATAS.sub("", ementa or "", count=1) if re.match(r"\s*assunto", ementa or "", re.IGNORECASE) else (ementa or "")
+    c = _DATAS.sub("", ementa or "", count=1) if _tem_cab(ementa) else (ementa or "")
     return re.sub(r"\s+", " ", c).strip()
 
 
 def extrair_teses(ementa: str | None) -> str | None:
     """Frases-título em caixa alta que seguem o cabeçalho (ex.: 'NULIDADE. INOCORRÊNCIA.')."""
-    corpo = _DATAS.sub("", ementa or "", count=1) if re.match(r"\s*assunto", ementa or "", re.IGNORECASE) else (ementa or "")
+    corpo = _DATAS.sub("", ementa or "", count=1) if _tem_cab(ementa) else (ementa or "")
     corpo = re.sub(r"\s+", " ", corpo).strip()
     m = _TITULOS.match(corpo)
     return re.sub(r"\s+", " ", m.group(1)).strip() if m else None
@@ -59,13 +64,13 @@ TEMAS = {
         "dec_rejeita": re.compile(
             rf"(?:rejeit\w+|afast\w+|nao acolh\w+|negar provimento a|improced\w+)[^.;]{{0,60}}{_ARG}"),
         "em_acolhe": re.compile(
-            r"(?<!nao )(?<!nao se )\be nul[oa]\b|declara-se nul|decretacao de nulidade|vicio insanavel|"
+            r"(?<!nao )(?<!nao se )(?<!somente )\be nul[oa]\b|declara-se nul|decretacao de nulidade|vicio insanavel|"
             r"nulidade[^.]{0,30}(?:acolhid|reconhecid|configurad)|nulidade\.? ocorrencia(?!.{0,5}\bnao)|"
             r"(?:cerceamento|preterição)[^.]{0,30}(?:configurad|caracterizad)"),
         "em_rejeita": re.compile(
             r"inocorr|nao evidenciad|nao (?:ha|houve|padece|enseja|procedem?)[^.]{0,40}(?:nulidade|cerceamento|nulo)|"
             r"improcedencia|nao configurad|nao se verific|afasta-se a nulidade|inexistencia de (?:nulidade|cerceamento)|"
-            r"nulidade\.? (?:inexistencia|impossibilidade|nao ocorrencia)|ausencia de nulidade|nao e nulo|nao cabe o acolhimento"),
+            r"nulidade\.? (?:inexistencia|impossibilidade|nao ocorrencia)|ausencia de nulidade|nao e nulo|nao cabe o acolhimento|nao verificad|nulidade\.? rejeitad"),
     },
     "prescricao": {
         "mencao": re.compile(r"prescri[cç]ao"),
@@ -81,7 +86,7 @@ TEMAS = {
 _VENCIDO = re.compile(r"venc[ei]d\w*.*?(?:\.\s|$)|designad\w+ para redigir.*?(?:\.\s|$)|"
     r"que (?:votou|votaram|dava|davam|acolhia|acatava|negava)\b.*?(?:\.\s|$)", re.DOTALL)
 # "acolher a preliminar de admissibilidade/decadência..." não é preliminar de nulidade.
-_OUTRA_PRELIM = re.compile(r"preliminar(?:es)? (?:de|da|do) (?:admissibilidade|decadencia|prescricao|ilegitimidade|conhecimento|tempestividade|concomitancia)")
+_OUTRA_PRELIM = re.compile(r"(?:preliminar(?:es)?|arguica\w+) (?:de|da|do) (?:admissibilidade|decadencia|prescricao|ilegitimidade|conhecimento|tempestividade|concomitancia)")
 
 
 def classificar_tese(tema: str, ementa: str | None, decisao: str | None = None) -> str | None:
@@ -94,6 +99,8 @@ def classificar_tese(tema: str, ementa: str | None, decisao: str | None = None) 
     e, d = _norm(ementa), _norm(decisao)
     d = _VENCIDO.sub(" ", d)
     d = re.sub(r"\bnao (?:se )?(?:acolh|acat)\w+", "afastar", d)
+    d = re.sub(r"\bsem (?:a )?(?:anulacao|declaracao de nulidade|decretacao)\b", "sem efeito", d)
+    d = re.sub(r"acolh\w+ (?:os )?(?:dois )?embargos\w*", "embargos", d)
     if tema == "nulidade":
         d = _OUTRA_PRELIM.sub("prelimoutra", d)
     if not t["mencao"].search(e) and not t["mencao"].search(d):
@@ -117,6 +124,9 @@ def classificar_tese(tema: str, ementa: str | None, decisao: str | None = None) 
         return None if not t["mencao"].search(d) else "INDEFINIDA"
     ea, er = bool(t["em_acolhe"].search(e[:900])), bool(t["em_rejeita"].search(e[:900]))
     if ea and not er:
+        # contribuinte perdeu (nega provimento ao voluntário) e o texto só enuncia a regra: não dá para afirmar
+        if re.search(r"neg\w+ provimento ao recurso( voluntario)?\b", d) and "oficio" not in d:
+            return "INDEFINIDA"
         return "ACOLHIDA"
     if er and not ea:
         return "REJEITADA"

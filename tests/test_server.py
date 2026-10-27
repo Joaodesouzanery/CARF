@@ -84,3 +84,32 @@ def test_novo_token_guarda_so_o_hash(tmp_path):
     tok = server.novo_token(arq, "Martinelli")
     guardado = json.loads(arq.read_text())
     assert tok not in arq.read_text() and guardado[server.hash_token(tok)] == "Martinelli"
+
+
+def test_voto_integral_com_trechos(tmp_path, anon):
+    app = server.criar_app(tmp_path, tokens={server.hash_token(TOKEN): "X"},
+                           obter_voto=lambda i: {"conteudo": "Texto longo. A multa qualificada exige dolo comprovado. Fim.",
+                                                 "citacao": "Acórdão 1", "nome_arquivo_pdf": "a.pdf"} if i == "7" else None)
+    c = TestClient(app)
+    h = {"x-token": TOKEN}
+    r = c.get("/api/voto/7?q=multa qualificada", headers=h).json()
+    assert r["trechos"] and "multa qualificada" in r["trechos"][0] and r["pdf"].endswith("a.pdf")
+    assert c.get("/api/voto/8", headers=h).status_code == 404
+    assert c.get("/api/voto/abc", headers=h).status_code == 400
+
+
+def test_parecidos_usa_vetores(tmp_path, anon):
+    import numpy as np
+
+    from carf.embeddings import Indice
+    from carf.store import Store
+    from carf.sync import montar_linha
+
+    docs = [doc(i, ementa_s=f"Ementa {i}") for i in (1, 2, 3)]
+    Store(tmp_path).write([montar_linha(d, anon, AGORA) for d in docs])
+    ind = Indice.__new__(Indice)
+    ind.ids = np.array(["1", "2", "3"], dtype=object)
+    ind.mat = np.array([[1, 0], [0.9, 0.1], [0, 1]], dtype=np.float32)
+    app = server.criar_app(tmp_path, tokens={server.hash_token(TOKEN): "X"}, indice=ind, embedder=object())
+    r = TestClient(app).post("/api/parecidos", headers={"x-token": TOKEN}, json={"id": "1", "limite": 2}).json()
+    assert [x["id"] for x in r["resultados"]][0] == "2"

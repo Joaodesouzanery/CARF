@@ -67,3 +67,19 @@ def test_filtros_por_materia_e_tese(tmp_path):
     assert [x["id"] for x in r] == ["1"]
     with pytest.raises(ValueError):
         consulta.buscar(con, "x", {"tese_inexistente": "1"})
+
+
+@pytest.mark.parametrize("decisao,esperado", [
+    ("rejeitar as arguições de nulidade; por maioria acolher a arguição de decadência", "REJEITADA"),
+    ("dar provimento ao recurso, sem anulação do anterior, com análise do mérito", "INDEFINIDA"),
+    ("acolher os embargos admitidos, sem efeitos infringentes, com retificação da nulidade", "INDEFINIDA"),
+])
+def test_falsos_acolhidos_corrigidos(decisao, esperado):
+    assert classificar_tese("nulidade", "NULIDADE. TESE GENÉRICA.", decisao) == esperado
+
+
+def test_assunto_sem_prefixo():
+    em = "IMPOSTO SOBRE A RENDA DE PESSOA FÍSICA (IRPF) Ano-calendário: 2005 DEDUÇÃO. DESPESAS MÉDICAS. COMPROVAÇÃO. Recibos bastam."
+    assert extrair_assunto(em) == "IMPOSTO SOBRE A RENDA DE PESSOA FÍSICA (IRPF)"
+    assert extrair_teses(em).startswith("DEDUÇÃO. DESPESAS MÉDICAS")
+    assert extrair_assunto("DEDUÇÃO. DESPESAS MÉDICAS. Comprovação por recibos.") is None

@@ -14,6 +14,8 @@ def limpar_texto(text: str | None) -> str:
     text = text.replace("\xad", "").replace("\x0c", "\n")
     text = re.sub(r"[ \t\r\v]+", " ", text)
     text = re.sub(r" ?\n ?", "\n", text)
+    # marca d'água vertical ("D\nO\nC\nU\nM\nE\nN\nT\nO..."): 6+ linhas seguidas de 1 a 2 letras
+    text = re.sub(r"(?:^[A-ZÀ-Ú]{1,2}\n+){6,}", "", text, flags=re.MULTILINE)
     return re.sub(r"\n{3,}", "\n\n", text).strip()
 
 

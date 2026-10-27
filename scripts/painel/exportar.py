@@ -64,11 +64,20 @@ def resumo_ementa(e: str | None, n=230) -> str:
     return e[:n] + ("…" if len(e) > n else "")
 
 
+def resumo_decisao(d: str | None, n=230) -> str:
+    """Sem ementa (em geral resoluções de conversão em diligência): mostra o que a decisão determinou."""
+    d = " ".join((d or "").split())
+    d = re.sub(r"^vistos, relatados e discutidos os presentes autos\.?\s*", "", d, flags=re.IGNORECASE)
+    d = re.split(r"\(?documento assinado|assinado digitalmente", d, flags=re.IGNORECASE)[0].strip()
+    return "(sem ementa) " + (d[:n] + ("…" if len(d) > n else ""))
+
+
 def exportar_anos(con, saida: Path, anos_min: int, anos_max: int = 9999, filtro_sql: str = "", params=()) -> dict:
     d = saida / "dados"
     d.mkdir(parents=True, exist_ok=True)
     turmas, assuntos = {}, {}
     por_ano = {}
+    resumo = {"ano": {}, "assuntos": Counter(), "res": Counter(), "turmas": Counter(), "nul": Counter(), "pre": Counter()}
     q = con.execute("""SELECT id, numero_decisao, numero_processo, turma, dt_sessao, ano, assunto, tese_nulidade,
                        tese_prescricao, decisao, ementa, nome_arquivo_pdf FROM acordaos
                        WHERE ano BETWEEN ? AND ?""" + filtro_sql + " ORDER BY dt_sessao DESC, id", [anos_min, anos_max, *params])
@@ -77,14 +86,29 @@ def exportar_anos(con, saida: Path, anos_min: int, anos_max: int = 9999, filtro_
     for (id_, dec, proc, turma, dt, ano, assunto, nul, pre, decisao, ementa, pdf) in linhas:
         ti = turmas.setdefault(turma or "", len(turmas))
         ai = assuntos.setdefault(canon.get(_chave_assunto(assunto), "") if assunto else "", len(assuntos))
+        res = consulta.classificar_resultado(decisao)
+        r_ano = resumo["ano"].setdefault(str(ano), {"n": 0, "res": Counter(), "nul": Counter()})
+        r_ano["n"] += 1
+        r_ano["res"][res] += 1
+        r_ano["nul"][nul or "NENHUMA"] += 1
+        resumo["res"][res] += 1
+        resumo["nul"][nul or "NENHUMA"] += 1
+        resumo["pre"][pre or "NENHUMA"] += 1
+        resumo["turmas"][turma or ""] += 1
+        if assunto:
+            resumo["assuntos"][canon.get(_chave_assunto(assunto), "")] += 1
         por_ano.setdefault(ano, []).append([
             id_, dec, proc, ti, dt.isoformat() if dt else None, ai, TESE[nul], TESE[pre],
-            consulta.classificar_resultado(decisao), resumo_ementa(ementa), pdf])
+            res, resumo_ementa(ementa) if (ementa or "").strip() else resumo_decisao(decisao), pdf])
     for ano, rows in por_ano.items():
         (d / f"ano-{ano}.json").write_text(json.dumps({"cols": COLS, "rows": rows}, ensure_ascii=False, separators=(",", ":")))
     meta = {"anos": sorted(por_ano), "n": {str(a): len(r) for a, r in por_ano.items()},
             "turmas": list(turmas), "assuntos": list(assuntos), "link": LINK,
-            "teses": ["", "acolhida", "rejeitada", "indefinida"], "gerado": date.today().strftime("%d/%m/%Y")}
+            "teses": ["", "acolhida", "rejeitada", "indefinida"], "gerado": date.today().strftime("%d/%m/%Y"),
+            "resumo": {"ano": {a: {"n": v["n"], "res": dict(v["res"]), "nul": dict(v["nul"])} for a, v in resumo["ano"].items()},
+                       "assuntos": resumo["assuntos"].most_common(14), "res": dict(resumo["res"]),
+                       "turmas": [t for t in resumo["turmas"].most_common(12) if t[0]], "nul": dict(resumo["nul"]),
+                       "pre": dict(resumo["pre"])}}
     (saida / "meta.json").write_text(json.dumps(meta, ensure_ascii=False, separators=(",", ":")))
     return meta
 

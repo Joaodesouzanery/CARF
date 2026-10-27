@@ -57,7 +57,7 @@ class LimiteTaxa:
 
 
 def criar_app(data_dir: Path, painel_dir: Path | None = None, tokens: dict[str, str] | None = None,
-              sem_token: bool = False, por_minuto: int = 60, indice=None, embedder=None) -> Starlette:
+              sem_token: bool = False, por_minuto: int = 60, indice=None, embedder=None, obter_voto=None) -> Starlette:
     if not tokens and not sem_token:
         raise ValueError("sem tokens configurados; use --sem-token só em desenvolvimento local")
     store, estado = Store(data_dir), {"indice": indice, "embedder": embedder}
@@ -153,6 +153,57 @@ def criar_app(data_dir: Path, painel_dir: Path | None = None, tokens: dict[str, 
                    relator=r.get("relator"), dt_sessao=str(r.get("dt_sessao") or ""), teses=r.get("teses"))
         return JSONResponse(out)
 
+    def _voto_padrao(id_: str) -> dict | None:
+        """Texto integral anonimizado: usa o que já está na base ou baixa do índice e anonimiza (NER, 1ª vez lenta)."""
+        r = consulta.obter(con(), id_)
+        if r and r.get("conteudo"):
+            return r
+        from .anonimizador import criar
+        from .solr import SolrClient
+        from .texto import baixar_texto
+        with trava:
+            if "anon" not in estado:
+                estado["anon"] = criar()
+        return baixar_texto(SolrClient(), store, estado["anon"], id_)
+
+    def _trechos(texto: str, termo: str, n=5, raio=220) -> list[str]:
+        if not termo:
+            return []
+        out, baixo, t = [], texto.lower(), termo.lower()
+        i = baixo.find(t)
+        while i != -1 and len(out) < n:
+            out.append(("…" if i > raio else "") + " ".join(texto[max(0, i - raio): i + len(t) + raio].split()) + "…")
+            i = baixo.find(t, i + raio * 2)
+        return out
+
+    async def voto(req: Request):
+        autenticar(req)
+        id_ = req.path_params["id"]
+        if not id_.isdigit():
+            raise HTTPException(400, "id inválido")
+        r = await run_in_threadpool(obter_voto or _voto_padrao, id_)
+        if not r or not r.get("conteudo"):
+            raise HTTPException(404, "texto integral indisponível para este acórdão")
+        texto, q = r["conteudo"], req.query_params.get("q", "").strip()
+        return JSONResponse({"id": id_, "citacao": r.get("citacao"), "tamanho": len(texto), "trechos": _trechos(texto, q),
+                             "texto": texto[:200_000], "pdf": LINK + r["nome_arquivo_pdf"] if r.get("nome_arquivo_pdf") else None})
+
+    async def parecidos(req: Request):
+        autenticar(req)
+        corpo = await req.json()
+        id_, k = str(corpo.get("id", "")), max(1, min(int(corpo.get("limite", 10)), 30))
+        pronto = semantico_pronto()
+        if pronto is None:
+            raise HTTPException(503, "índice de significado indisponível")
+        ind = pronto[0]
+        pos = [i for i, x in enumerate(ind.ids) if str(x) == id_]
+        if not pos:
+            raise HTTPException(404, "acórdão sem vetor no índice")
+        viz = [(i, sc) for i, sc in ind.buscar(ind.mat[pos[0]], k + 1) if i != id_][:k]
+        completo = await run_in_threadpool(semantico._linhas, con(), [i for i, _ in viz])
+        return JSONResponse({"resultados": [linha({**completo[i], "score": round(sc, 4)}) | {"score": round(sc, 4)}
+                                            for i, sc in viz if i in completo]})
+
     async def tendencia(req: Request):
         autenticar(req)
         g = qg.conectar(data_dir)
@@ -171,6 +222,8 @@ def criar_app(data_dir: Path, painel_dir: Path | None = None, tokens: dict[str, 
         Route("/api/saude", saude),
         Route("/api/buscar", buscar, methods=["POST"]),
         Route("/api/acordao/{id}", acordao),
+        Route("/api/voto/{id}", voto),
+        Route("/api/parecidos", parecidos, methods=["POST"]),
         Route("/api/tendencia", tendencia),
         Route("/api/estoque", estoque),
     ]
