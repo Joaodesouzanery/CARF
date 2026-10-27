@@ -2,6 +2,7 @@
 
 import json
 import os
+import re
 from collections import Counter
 from datetime import UTC, datetime
 from pathlib import Path
@@ -50,6 +51,8 @@ def _escalares(doc: dict) -> dict:
 def montar_linha(doc: dict, anon, agora: datetime, leve: bool = False) -> dict:
     doc = _escalares(doc)
     relator = doc.get("nome_relator_s")
+    if relator and re.search(r"\d{6,}", relator):  # a fonte às vezes traz "<CPF> - CPF não encontrado."
+        relator = None
     permitidos = [relator] if relator else []
     stats: Counter = Counter()
 

@@ -133,12 +133,26 @@ def classificar_tese(tema: str, ementa: str | None, decisao: str | None = None) 
     return "INDEFINIDA"
 
 
+_SUMULA = re.compile(
+    r"s[úu]mulas?\s+carf\s*(?:n[ºo°.]{0,2}s?\s*)?(\d{1,3}(?:\s*(?:,|e|a)\s*(?:n[ºo°.]{0,2}s?\s*)?\d{1,3})*)", re.IGNORECASE)
+
+
+def extrair_sumulas(*textos: str | None) -> str | None:
+    """Números das súmulas CARF citadas (ex.: '2,11,85'). 'a' em 'nº 1 a 3' conta só os extremos citados."""
+    achadas: set[int] = set()
+    for t in textos:
+        for m in _SUMULA.finditer(t or ""):
+            achadas.update(int(n) for n in re.findall(r"\d{1,3}", m.group(1)) if 0 < int(n) < 400)
+    return ",".join(str(n) for n in sorted(achadas)) or None
+
+
 def enriquecer(ementa: str | None, decisao: str | None) -> dict:
     return {
         "assunto": extrair_assunto(ementa),
         "teses": extrair_teses(ementa),
         "tese_nulidade": classificar_tese("nulidade", ementa, decisao),
         "tese_prescricao": classificar_tese("prescricao", ementa, decisao),
+        "sumulas": extrair_sumulas(ementa, decisao),
     }
 
 
@@ -175,7 +189,7 @@ def construir_facets(store, log=print) -> int:
     linhas = con.execute("SELECT id, ementa, decisao, numero_decisao, numero_processo FROM acordaos_base").fetchall()
     oficial = _oficial(store)
     chaves = ("id", "assunto", "assunto_norm", "teses", "tese_nulidade", "tese_prescricao",
-              "tributo", "desfecho_oficial", "votacao", "tipo_recurso")
+              "tributo", "desfecho_oficial", "votacao", "tipo_recurso", "sumulas")
     cols = {k: [] for k in chaves}
     casou = 0
     for id_, ementa, decisao, dec, proc in linhas:
@@ -189,6 +203,7 @@ def construir_facets(store, log=print) -> int:
         cols["teses"].append(f["teses"])
         cols["tese_nulidade"].append(f["tese_nulidade"])
         cols["tese_prescricao"].append(f["tese_prescricao"])
+        cols["sumulas"].append(f["sumulas"])
         for k, v in zip(("tributo", "desfecho_oficial", "votacao", "tipo_recurso"), reg, strict=True):
             cols[k].append(v)
     tmp = store.facets_path.with_suffix(".tmp")

@@ -127,3 +127,19 @@ def test_coluna_ano_continua_inteira_com_particao_desconhecida(tmp_path, anon):
     assert con.execute("select typeof(ano) from acordaos limit 1").fetchone()[0] == "INTEGER"
     assert con.execute("select count(*) from acordaos where ano is null").fetchone()[0] == 1
     assert con.execute("select max(ano) from acordaos").fetchone()[0] == 2022
+
+
+def test_relator_com_cpf_da_fonte_e_descartado(tmp_path, anon):
+    from datetime import datetime
+
+    from carf.store import Store
+    from carf.sync import montar_linha
+
+    from .fakes import doc
+
+    linha = montar_linha(doc(1, nome_relator_s="05751001842 - CPF não encontrado."), anon, datetime(2026, 1, 1))
+    assert linha["relator"] is None
+    # versões já gravadas antes da correção também saem mascaradas na leitura
+    antiga = {**linha, "relator": "05751001842 - CPF não encontrado."}
+    Store(tmp_path).write([antiga])
+    assert Store(tmp_path).connect().execute("select relator from acordaos").fetchone() == (None,)

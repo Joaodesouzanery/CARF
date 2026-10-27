@@ -39,10 +39,14 @@ def montar(data_dir, saida, ano_min=2018, ano_max=9999, assunto=None, nulidade=N
         tmp = Path(tmp)
         meta = exportar.exportar_anos(Store(data_dir).connect(), tmp, ano_min, ano_max, filtro, params)
         exportar.exportar_oficial(Path(data_dir), tmp)
+        if not termo and not assunto and not nulidade and not prescricao:
+            exportar.exportar_estoque_processos(Path(data_dir), tmp)
         if revisao:
             exportar.exportar_revisao(Path(revisao), tmp, revisao_csv)
         dados = {"meta.json": json.loads((tmp / "meta.json").read_text()),
                  "oficial.json": json.loads((tmp / "oficial.json").read_text())}
+        if (tmp / "estoque_proc.json").exists():
+            dados["estoque_proc.json"] = json.loads((tmp / "estoque_proc.json").read_text())
         if (tmp / "revisao.json").exists():
             dados["revisao.json"] = json.loads((tmp / "revisao.json").read_text())
         if prontas and Path(prontas).exists():

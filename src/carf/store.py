@@ -32,7 +32,7 @@ SCHEMA = pa.schema(
 )
 
 
-FACETS_COLS = ["assunto", "assunto_norm", "teses", "tese_nulidade", "tese_prescricao", "tributo", "desfecho_oficial", "votacao", "tipo_recurso"]
+FACETS_COLS = ["assunto", "assunto_norm", "teses", "tese_nulidade", "tese_prescricao", "tributo", "desfecho_oficial", "votacao", "tipo_recurso", "sumulas"]
 
 
 class Store:
@@ -66,7 +66,8 @@ class Store:
         if self._arquivos():
             glob = str(self.dir / "ano=*" / "part-*.parquet").replace("'", "''")
             con.execute(
-                f"""CREATE VIEW acordaos_base AS SELECT * EXCLUDE (rn) FROM (
+                f"""CREATE VIEW acordaos_base AS SELECT * EXCLUDE (rn) REPLACE (
+                      CASE WHEN regexp_matches(relator, '\\d{{6,}}') THEN NULL ELSE relator END AS relator) FROM (
                       SELECT *, row_number() OVER (
                         PARTITION BY id
                         ORDER BY dt_index DESC NULLS LAST, processado_em DESC) AS rn

@@ -83,3 +83,11 @@ def test_assunto_sem_prefixo():
     assert extrair_assunto(em) == "IMPOSTO SOBRE A RENDA DE PESSOA FÍSICA (IRPF)"
     assert extrair_teses(em).startswith("DEDUÇÃO. DESPESAS MÉDICAS")
     assert extrair_assunto("DEDUÇÃO. DESPESAS MÉDICAS. Comprovação por recibos.") is None
+
+
+def test_sumulas_citadas():
+    from carf.teses import extrair_sumulas
+
+    assert extrair_sumulas("Súmula CARF nº 11 - Não se aplica a prescrição.", "conforme Súmulas CARF nºs 2, 28 e 85") == "2,11,28,85"
+    assert extrair_sumulas("Súmula Vinculante nº 150 do STF", None) is None
+    assert extrair_sumulas("Súmula CARF nº 11 (Vinculante, Portaria MF nº 277, de 07/06/2018)") == "11"

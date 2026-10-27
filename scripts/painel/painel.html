@@ -202,6 +202,7 @@ svg .lbl { fill: var(--ink); font-weight: 600; }
   <nav role="tablist" id="tabs" aria-label="Seções">
     <button role="tab" aria-selected="true" data-t="visao" aria-label="Visão geral"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>Visão geral</button>
     <button role="tab" aria-selected="false" data-t="pesquisa" aria-label="Pesquisa"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>Pesquisa</button>
+    <button role="tab" aria-selected="false" data-t="processo" aria-label="Consultar processo"><svg viewBox="0 0 24 24"><path d="M4 5h16M4 12h10M4 19h16"/><circle cx="18" cy="12" r="2.5"/></svg>Consultar processo</button>
     <button role="tab" aria-selected="false" data-t="tendencias" aria-label="Tendências"><svg viewBox="0 0 24 24"><path d="M3 17l5-5 4 4 8-9"/><path d="M15 7h5v5"/></svg>Tendências</button>
     <button role="tab" aria-selected="false" data-t="estoque" aria-label="Estoque"><svg viewBox="0 0 24 24"><path d="M3 7l9-4 9 4-9 4-9-4z"/><path d="M3 12l9 4 9-4"/><path d="M3 17l9 4 9-4"/></svg>Estoque</button>
     <button role="tab" aria-selected="false" data-t="boletim" aria-label="Boletim"><svg viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M9 13h7M9 17h7"/></svg>Boletim</button>
@@ -251,6 +252,8 @@ svg .lbl { fill: var(--ink); font-weight: 600; }
       <div><label for="pre">Prescrição</label><select id="pre"><option value="0">Qualquer</option><option value="1">Acolhida</option><option value="2">Rejeitada</option></select></div>
       <div><label for="res">Resultado (leitura automática)</label><select id="res"><option value="">Qualquer</option><option value="PROVIDO">Provido</option><option value="PROVIDO_PARCIAL">Provido em parte</option><option value="NEGADO">Negado</option><option value="NAO_CONHECIDO">Não conhecido</option></select></div>
       <div><label for="turma">Colegiado</label><select id="turma"></select></div>
+      <div><label for="frel">Relator</label><select id="frel"></select></div>
+      <div><label for="fsum">Súmula CARF citada (nº)</label><input id="fsum" type="search" inputmode="numeric" placeholder="ex.: 11" autocomplete="off"></div>
       <div><label for="ftrib">Tributo (oficial)</label><select id="ftrib"></select></div>
       <div><label for="fvot">Votação (oficial)</label><select id="fvot"></select></div>
       <div><label for="ftipo">Tipo de recurso (oficial)</label><select id="ftipo"></select></div>
@@ -265,6 +268,17 @@ svg .lbl { fill: var(--ink); font-weight: 600; }
       <p class="note" style="margin-top:14px">A tese e o resultado são leituras automáticas do texto da decisão. Conferem na amostra medida, mas podem errar, e a abstenção aparece como “indefinida”. Este painel busca por palavras no início da ementa. A busca por significado, sobre a ementa inteira e o voto, roda no servidor.</p>
     </div>
   </div>
+</section>
+
+<section id="processo" hidden>
+  <div class="panel">
+    <h2>Consultar processo</h2>
+    <p class="lead">Digite o número do processo (com ou sem pontuação). Mostra os acórdãos já julgados e, se o processo ainda está pendente, a fase em que está no CARF.</p>
+    <div style="max-width:420px"><label for="pnum">Número do processo</label><input id="pnum" type="search" placeholder="ex.: 10120.720465/2014-81" autocomplete="off"></div>
+    <div class="hint" id="pmsg" style="margin-top:8px"></div>
+  </div>
+  <div id="pestoque"></div>
+  <div id="pacordaos"></div>
 </section>
 
 <section id="tendencias" hidden>
@@ -459,7 +473,7 @@ function cardApi(x) {
 
 function filtrar() {
   if ($("#sem") && $("#sem").checked) { clearTimeout(timerSrv); timerSrv = setTimeout(buscarServidor, 350); return; }
-  const f = { nul: +$("#nul").value, pre: +$("#pre").value, res: $("#res").value, turma: $("#turma").value, assunto: $("#assunto").value, trib: $("#ftrib").value, vot: $("#fvot").value, tipo: $("#ftipo").value };
+  const f = { nul: +$("#nul").value, pre: +$("#pre").value, res: $("#res").value, turma: $("#turma").value, assunto: $("#assunto").value, trib: $("#ftrib").value, vot: $("#fvot").value, tipo: $("#ftipo").value, rel: $("#frel").value, sum: $("#fsum").value.replace(/\D/g, "") };
   const toks = fold($("#q").value).split(/[^a-z0-9]+/).filter((t) => t.length > 1 && !STOP.has(t));
   const out = [];
   for (const a of [...sel].sort().reverse()) {
@@ -483,6 +497,8 @@ function filtrar() {
       if (f.trib !== "" && String(r[11]) !== f.trib) continue;
       if (f.vot !== "" && String(r[12]) !== f.vot) continue;
       if (f.tipo !== "" && String(r[13]) !== f.tipo) continue;
+      if (f.rel !== "" && String(r[15]) !== f.rel) continue;
+      if (f.sum && !(("," + r[16] + ",").includes("," + f.sum + ","))) continue;
       let s = 0;
       if (toks.length) { const e = fold(r[9].slice(0, 90)); toks.forEach((t) => { if (e.includes(t)) s += 2; }); }
       out.push([s, r[4] || "", r]);
@@ -509,7 +525,7 @@ function card(r) {
   st.addEventListener("click", () => { alternar(r); const on = marcados.has(r[0]); st.textContent = on ? "★" : "☆"; st.classList.toggle("on", on); });
   topo.appendChild(st); c.appendChild(topo);
   const d = r[4] ? r[4].split("-").reverse().join("/") : "s/d";
-  c.appendChild(el("div", "meta", `${META.turmas[r[3]] || "colegiado não informado"} · sessão ${d}`));
+  c.appendChild(el("div", "meta", `${META.turmas[r[3]] || "colegiado não informado"} · sessão ${d}${META.relatores && META.relatores[r[15]] ? " · Rel. " + META.relatores[r[15]] : ""}`));
   const chips = el("div", "chips");
   if (META.assuntos[r[5]]) chips.appendChild(el("span", "chip", META.assuntos[r[5]]));
   if (r[6]) chips.appendChild(el("span", "chip " + (r[6] === 1 ? "ok" : r[6] === 2 ? "bad" : "nt"), "Nulidade " + META.teses[r[6]]));
@@ -517,6 +533,7 @@ function card(r) {
   const rs = RES[r[8]]; if (rs) chips.appendChild(el("span", "chip " + rs[1], rs[0] + (r[14] ? " · oficial" : " · leitura automática")));
   if (META.tributos && META.tributos[r[11]]) chips.appendChild(el("span", "chip nt", META.tributos[r[11]]));
   if (META.votacoes && META.votacoes[r[12]]) chips.appendChild(el("span", "chip nt", META.votacoes[r[12]]));
+  if (r[16]) chips.appendChild(el("span", "chip nt", "Súmula CARF " + r[16].split(",").join(", ")));
   c.appendChild(chips);
   c.appendChild(el("p", "", r[9]));
   if (r[10]) { const p = el("p"); const a = el("a", "", "Abrir o acórdão (PDF oficial)"); a.href = META.link + r[10]; a.target = "_blank"; a.rel = "noopener"; p.appendChild(a); c.appendChild(p); }
@@ -529,10 +546,18 @@ function comparar() {
   const t = $("#compTab"); t.replaceChildren(); if (!m.size) { t.appendChild(el("div", "hint", "Sem resultados.")); return; }
   const tb = el("table"), h = el("tr"); ["Colegiado", "Acórdãos", "Nulidade acolhida", "Nulidade rejeitada", "Providos", "Negados"].forEach((c, i) => h.appendChild(el("th", i ? "n" : "", c))); tb.appendChild(h);
   [...m.entries()].sort((a, b) => b[1].n - a[1].n).slice(0, 25).forEach(([k, o]) => { const r = el("tr"); [k, fmt(o.n), o.na ? `${o.na} (${pct(o.na, o.n)})` : "–", o.nr ? `${o.nr} (${pct(o.nr, o.n)})` : "–", pct(o.p, o.n), pct(o.g, o.n)].forEach((v, i) => r.appendChild(el("td", i ? "n" : "", v))); tb.appendChild(r); });
-  t.appendChild(tb); t.appendChild(el("div", "hint", "Percentuais sobre os acórdãos do resultado atual; tese e resultado são leituras automáticas."));
+  t.appendChild(tb);
+  const mr = new Map(); acha.forEach((r) => { const n = META.relatores[r[15]]; if (!n) return; const o = mr.get(n) || { n: 0, na: 0, p: 0, g: 0 }; o.n++; if (r[6] === 1) o.na++; if (r[8] === "PROVIDO" || r[8] === "PROVIDO_PARCIAL") o.p++; if (r[8] === "NEGADO") o.g++; mr.set(n, o); });
+  if (mr.size) {
+    t.appendChild(el("h2", "", "Relatores")); t.lastChild.style.cssText = "margin:16px 0 6px;font-size:14px";
+    const tr = el("table"), hr = el("tr"); ["Relator", "Acórdãos", "Nulidade acolhida", "Providos", "Negados"].forEach((c, i) => hr.appendChild(el("th", i ? "n" : "", c))); tr.appendChild(hr);
+    [...mr.entries()].filter(([, o]) => o.n >= 5).sort((a, b) => b[1].n - a[1].n).slice(0, 15).forEach(([k, o]) => { const r = el("tr"); [k, fmt(o.n), o.na ? `${o.na} (${pct(o.na, o.n)})` : "–", pct(o.p, o.n), pct(o.g, o.n)].forEach((v, i) => r.appendChild(el("td", i ? "n" : "", v))); tr.appendChild(r); });
+    t.appendChild(tr); t.appendChild(el("div", "hint", "Só relatores com 5 acórdãos ou mais no resultado."));
+  }
+  t.appendChild(el("div", "hint", "Percentuais sobre os acórdãos do resultado atual; resultado oficial quando existe, tese por leitura automática."));
 }
 
-function estadoAtual() { return { q: $("#q").value, nul: $("#nul").value, pre: $("#pre").value, res: $("#res").value, turma: $("#turma").value, assunto: $("#assunto").value, trib: $("#ftrib").value, vot: $("#fvot").value, tipo: $("#ftipo").value, anos: [...sel] }; }
+function estadoAtual() { return { q: $("#q").value, nul: $("#nul").value, pre: $("#pre").value, res: $("#res").value, turma: $("#turma").value, assunto: $("#assunto").value, trib: $("#ftrib").value, vot: $("#fvot").value, tipo: $("#ftipo").value, rel: $("#frel").value, sum: $("#fsum").value, anos: [...sel] }; }
 const salvas = (() => { try { return JSON.parse(store.get("carf-salvas") || "[]"); } catch (e) { return []; } })();
 function desenharSalvas() {
   const box = $("#salvas"); box.replaceChildren();
@@ -540,7 +565,7 @@ function desenharSalvas() {
     const b = el("button", "b", s.nome); b.type = "button";
     b.addEventListener("click", async () => {
       for (const a of s.e.anos) { const c = $("#ano" + a); if (c && !c.checked) { c.checked = true; await marcarAno(a, true); } }
-      $("#q").value = s.e.q; ["nul", "pre", "res", "turma", "assunto"].forEach((k) => ($("#" + k).value = s.e[k])); [["ftrib", "trib"], ["fvot", "vot"], ["ftipo", "tipo"]].forEach(([i, k]) => ($("#" + i).value = s.e[k] || "")); filtrar();
+      $("#q").value = s.e.q; ["nul", "pre", "res", "turma", "assunto"].forEach((k) => ($("#" + k).value = s.e[k])); [["ftrib", "trib"], ["fvot", "vot"], ["ftipo", "tipo"], ["frel", "rel"], ["fsum", "sum"]].forEach(([i, k]) => ($("#" + i).value = s.e[k] || "")); filtrar();
     });
     const x = el("button", "b", "×"); x.type = "button"; x.setAttribute("aria-label", "Remover " + s.nome); x.style.padding = "8px 9px";
     x.addEventListener("click", () => { salvas.splice(i, 1); store.set("carf-salvas", JSON.stringify(salvas)); desenharSalvas(); });
@@ -591,11 +616,12 @@ function montarFiltros() {
   META.assuntos.map((n, i) => [n, i]).filter((x) => x[0]).sort((a, b) => a[0].localeCompare(b[0], "pt")).forEach(([n, i]) => ass.appendChild(new Option(n, String(i))));
   const tu = $("#turma"); tu.appendChild(new Option("Qualquer colegiado", ""));
   META.turmas.map((n, i) => [n, i]).filter((x) => x[0]).sort((a, b) => a[0].localeCompare(b[0], "pt")).forEach(([n, i]) => tu.appendChild(new Option(n, String(i))));
-  [["#ftrib", META.tributos, "Qualquer tributo"], ["#fvot", META.votacoes, "Qualquer votação"], ["#ftipo", META.tipos, "Qualquer tipo"]].forEach(([id, lista, rot]) => {
+  [["#frel", META.relatores, "Qualquer relator"], ["#ftrib", META.tributos, "Qualquer tributo"], ["#fvot", META.votacoes, "Qualquer votação"], ["#ftipo", META.tipos, "Qualquer tipo"]].forEach(([id, lista, rot]) => {
     const sl = $(id); sl.appendChild(new Option(rot, ""));
     (lista || []).map((n, i) => [n, i]).filter((x) => x[0]).sort((a, b) => a[0].localeCompare(b[0], "pt")).forEach(([n, i]) => sl.appendChild(new Option(TIPO_NOME[n] || n, String(i))));
   });
-  ["#nul", "#pre", "#res", "#turma", "#assunto", "#ftrib", "#fvot", "#ftipo"].forEach((s) => $(s).addEventListener("change", filtrar));
+  ["#nul", "#pre", "#res", "#turma", "#assunto", "#ftrib", "#fvot", "#ftipo", "#frel"].forEach((s) => $(s).addEventListener("change", filtrar));
+  $("#fsum").addEventListener("input", agenda);
   $("#q").addEventListener("input", () => { if ($("#sem") && $("#sem").checked) return; agenda(); });
   $("#q").addEventListener("keydown", (e) => { if (e.key === "Enter" && $("#sem") && $("#sem").checked) filtrar(); });
   $("#mais").addEventListener("click", mais);
@@ -604,7 +630,7 @@ function montarFiltros() {
     for (const a of [...META.anos].reverse()) { const i = $("#ano" + a); if (i && !i.checked) { b.textContent = `Carregando ${a}…`; i.checked = true; await marcarAno(a, true); } }
     b.textContent = "Todos os anos marcados"; b.disabled = false;
   });
-  $("#limpar").addEventListener("click", () => { $("#q").value = ""; ["#nul", "#pre"].forEach((s) => ($(s).value = "0")); ["#res", "#turma", "#assunto", "#ftrib", "#fvot", "#ftipo"].forEach((s) => ($(s).value = "")); filtrar(); });
+  $("#limpar").addEventListener("click", () => { $("#q").value = ""; ["#nul", "#pre"].forEach((s) => ($(s).value = "0")); ["#res", "#turma", "#assunto", "#ftrib", "#fvot", "#ftipo", "#frel"].forEach((s) => ($(s).value = "")); $("#fsum").value = ""; filtrar(); });
   $("#copiar").addEventListener("click", async () => {
     const t = acha.slice(0, 200).map(citacao).join("\n");
     try { await navigator.clipboard.writeText(t); $("#copiar").textContent = "Copiado"; } catch (e) { $("#copiar").textContent = "Não foi possível copiar"; }
@@ -617,7 +643,7 @@ function montarProntas() {
   PRONTAS.forEach((p) => {
     const b = el("button", "b", p.titulo); b.type = "button";
     b.addEventListener("click", async () => {
-      $("#q").value = ""; ["#nul", "#pre"].forEach((x) => ($(x).value = "0")); ["#res", "#turma", "#assunto", "#ftrib", "#fvot", "#ftipo"].forEach((x) => ($(x).value = ""));
+      $("#q").value = ""; ["#nul", "#pre"].forEach((x) => ($(x).value = "0")); ["#res", "#turma", "#assunto", "#ftrib", "#fvot", "#ftipo", "#frel"].forEach((x) => ($(x).value = "")); $("#fsum").value = "";
       $("#anosHint").textContent = "carregando…";
       for (const a of p.anos) { try { await carregarAno(a); } catch (e) { /* ano indisponível */ } }
       $("#anosHint").textContent = "";
@@ -711,6 +737,8 @@ function descricaoFiltros() {
   if (e.turma !== "") t.push("Colegiado: " + META.turmas[+e.turma]);
   if (e.trib !== "") t.push("Tributo: " + META.tributos[+e.trib]);
   if (e.vot !== "") t.push("Votação: " + META.votacoes[+e.vot]);
+  if (e.rel !== "") t.push("Relator: " + META.relatores[+e.rel]);
+  if (e.sum) t.push("Súmula CARF nº " + e.sum);
   if (e.tipo !== "") t.push("Recurso: " + (TIPO_NOME[META.tipos[+e.tipo]] || META.tipos[+e.tipo]));
   return t;
 }
@@ -876,6 +904,25 @@ function montarVisao() {
   donut("#d-tur", R.turmas.map(([n, v]) => [n, v]), (it) => fmt(it[1]) + " acórdãos");
 }
 
+let ESTOQUE = null;
+async function consultarProcesso() {
+  const dig = $("#pnum").value.replace(/\D/g, ""), msg = $("#pmsg"), pe = $("#pestoque"), pa = $("#pacordaos");
+  pe.replaceChildren(); pa.replaceChildren();
+  if (dig.length < 12) { msg.textContent = dig.length ? "Digite o número completo (15 a 17 dígitos)." : ""; return; }
+  msg.textContent = "Procurando em todos os anos…";
+  for (const a of META.anos) { if (!anos[a]) { try { await carregarAno(a); } catch (e) { /* ano indisponível */ } } }
+  if (ESTOQUE === null) { try { ESTOQUE = await getJson("estoque_proc.json"); } catch (e) { ESTOQUE = false; } }
+  const achados = []; for (const a of Object.keys(anos)) anos[a].rows.forEach((r) => { if ((r[2] || "").replace(/\D/g, "") === dig) achados.push(r); });
+  achados.sort((x, y) => ((y[4] || "") > (x[4] || "") ? 1 : -1));
+  const est = ESTOQUE && ESTOQUE.d ? ESTOQUE.d[dig] : null;
+  msg.textContent = `${achados.length} acórdão(s) julgado(s)${est ? " e processo pendente no CARF" : ""}.`;
+  if (est) { const c = el("div", "panel"); c.appendChild(el("h2", "", `Processo pendente no CARF (estoque de ${ESTOQUE.ref})`));
+    const l = el("div", "kpis"); [[ESTOQUE.f[est[0]] || "Fase não informada", "fase processual"], [est[1] ? dataBR(est[1]) : "—", "entrada no CARF"], [ESTOQUE.t[est[2]] || "—", "tributo"], [ESTOQUE.i[est[3]] || "—", "instância"]].forEach(([b, t]) => { const d = el("div"); d.append(el("b", "", b), el("span", "", t)); l.appendChild(d); }); l.style.marginTop = "10px"; c.appendChild(l); pe.appendChild(c); }
+  else if (ESTOQUE === false) pe.appendChild(el("p", "note", "Este arquivo não traz o estoque por processo."));
+  achados.forEach((r) => pa.appendChild(card(r)));
+  if (!achados.length && !est) pa.appendChild(el("div", "empty", "Processo não encontrado nos acórdãos de 2018 em diante nem no estoque do mês."));
+}
+
 function montarSobre() {
   const total = Object.values(META.n).reduce((a, b) => a + b, 0), c = $("#sobreCorpo");
   const sec = (t, itens) => { c.appendChild(el("h2", "", t)); const u = el("ul"); u.style.cssText = "max-width:78ch;padding-left:20px"; itens.forEach((x) => u.appendChild(el("li", "", x))); c.appendChild(u); };
@@ -904,7 +951,7 @@ function montarSobre() {
 function abas() {
   const hash = location.hash.slice(1);
   document.querySelectorAll("#tabs button").forEach((b) => b.addEventListener("click", () => ir(b.dataset.t)));
-  const TIT = { visao: "Visão geral", pesquisa: "Pesquisa de jurisprudência", tendencias: "Tendências", estoque: "Estoque", boletim: "Boletim", revisao: "Revisão LGPD", sobre: "Sobre" };
+  const TIT = { processo: "Consultar processo", visao: "Visão geral", pesquisa: "Pesquisa de jurisprudência", tendencias: "Tendências", estoque: "Estoque", boletim: "Boletim", revisao: "Revisão LGPD", sobre: "Sobre" };
   function ir(t) {
     $("#titulo").textContent = TIT[t] || t; window.scrollTo(0, 0); if (t === "boletim" && typeof desenharDoc === "function") desenharDoc();
     document.querySelectorAll("#tabs button").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.t === t)));
@@ -922,7 +969,7 @@ function abas() {
     const total = Object.values(META.n).reduce((a, b) => a + b, 0);
     $("#sub").textContent = `${fmt(total)} acórdãos de ${META.anos[0]} a ${META.anos[META.anos.length - 1]} · texto anonimizado`;
     try { if (location.protocol === "file:") throw new Error("arquivo local"); const h = await fetch("api/saude"); if (h.ok && (await h.json()).ok) { $("#srv").hidden = false; $("#tok").value = store.get("carf-token") || ""; $("#sem").addEventListener("change", () => { $("#tok").hidden = !$("#sem").checked; filtrar(); }); } } catch (e) { /* sem servidor: só a busca por palavras */ }
-    montarFiltros(); iniciarExtras(); montarProntas(); montarTend(); montarEstoque(); montarRevisao(); montarSobre(); montarVisao();
+    montarFiltros(); iniciarExtras(); montarProntas(); montarTend(); montarEstoque(); montarRevisao(); montarSobre(); montarVisao(); $("#pnum").addEventListener("input", () => { clearTimeout(timer); timer = setTimeout(consultarProcesso, 300); });
     const ult = META.anos[META.anos.length - 1];
     await marcarAno(ult, true); $("#ano" + ult).checked = true;
     montarBoletim();
